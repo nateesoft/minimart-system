@@ -20,7 +20,14 @@ import {
   ChevronLeft,
   ChevronRight,
   PanelRightOpen,
-  PanelRightClose
+  PanelRightClose,
+  PanelLeftOpen,
+  PanelLeftClose,
+  Tag,
+  Percent,
+  Gift,
+  Clock,
+  Zap
 } from 'lucide-react';
 import Link from 'next/link';
 import type { Product, CartItem, Category } from '@/types';
@@ -99,6 +106,63 @@ export default function MinimartPOS() {
 
   // Right panel state (collapsible) - default collapsed
   const [isPaidPanelOpen, setIsPaidPanelOpen] = useState<boolean>(false);
+
+  // Left panel state (promotions) - default collapsed
+  const [isPromoPanelOpen, setIsPromoPanelOpen] = useState<boolean>(false);
+
+  // Sample promotions data
+  const promotions = [
+    {
+      id: 1,
+      title: 'ซื้อ 2 แถม 1',
+      description: 'น้ำดื่มทุกชนิด ซื้อ 2 ขวด แถมฟรี 1 ขวด',
+      type: 'bundle',
+      discount: 'แถมฟรี',
+      validUntil: '28 ก.พ. 2026',
+      color: 'from-orange-500 to-red-500',
+      icon: Gift,
+    },
+    {
+      id: 2,
+      title: 'ลด 20%',
+      description: 'ขนมขบเคี้ยวทุกชนิด ลดราคา 20%',
+      type: 'percent',
+      discount: '-20%',
+      validUntil: '15 ก.พ. 2026',
+      color: 'from-green-500 to-emerald-500',
+      icon: Percent,
+    },
+    {
+      id: 3,
+      title: 'Flash Sale',
+      description: 'บะหมี่กึ่งสำเร็จรูป ลดเหลือ 6 บาท',
+      type: 'flash',
+      discount: '฿6',
+      validUntil: 'วันนี้เท่านั้น',
+      color: 'from-purple-500 to-pink-500',
+      icon: Zap,
+    },
+    {
+      id: 4,
+      title: 'สะสมแต้ม x2',
+      description: 'สินค้าหมวดของใช้ รับแต้มสะสม 2 เท่า',
+      type: 'points',
+      discount: 'x2 แต้ม',
+      validUntil: '31 ก.พ. 2026',
+      color: 'from-blue-500 to-cyan-500',
+      icon: Tag,
+    },
+    {
+      id: 5,
+      title: 'Happy Hour',
+      description: 'เครื่องดื่มเย็น ลด 15% เวลา 14:00-16:00',
+      type: 'time',
+      discount: '-15%',
+      validUntil: 'ทุกวัน',
+      color: 'from-amber-500 to-yellow-500',
+      icon: Clock,
+    },
+  ];
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -1096,12 +1160,96 @@ export default function MinimartPOS() {
         </div>
       </div>
 
+      {/* Collapsible Left Panel - Promotions */}
+      <div className={`fixed top-[140px] left-0 h-[calc(100vh-140px)] z-40 transition-all duration-300 ease-in-out ${
+        isPromoPanelOpen ? 'w-80' : 'w-0'
+      }`}>
+        {/* Panel Content */}
+        <div className={`h-full w-80 bg-white shadow-2xl border-r border-gray-200 transition-transform duration-300 ease-in-out ${
+          isPromoPanelOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
+          {/* Panel Header */}
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Tag className="mr-2" size={22} />
+                <div>
+                  <h2 className="text-lg font-bold">โปรโมชั่น</h2>
+                  <p className="text-orange-100 text-xs">{promotions.length} รายการ</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPromoPanelOpen(false)}
+                className="p-1.5 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
+                title="ซ่อนแผง"
+              >
+                <PanelLeftClose size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Panel Body */}
+          <div className="h-[calc(100%-80px)] overflow-y-auto p-4 space-y-3">
+            {promotions.map((promo) => {
+              const IconComponent = promo.icon;
+              return (
+                <div key={promo.id} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+                  {/* Promo Header */}
+                  <div className={`bg-gradient-to-r ${promo.color} text-white px-4 py-3`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <IconComponent size={20} className="mr-2" />
+                        <span className="font-bold">{promo.title}</span>
+                      </div>
+                      <span className="bg-white bg-opacity-20 px-2 py-1 rounded-full text-xs font-bold">
+                        {promo.discount}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Promo Body */}
+                  <div className="px-4 py-3">
+                    <p className="text-sm text-gray-700 mb-2">{promo.description}</p>
+                    <div className="flex items-center text-xs text-gray-500">
+                      <Clock size={12} className="mr-1" />
+                      <span>หมดเขต: {promo.validUntil}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* More Promos Banner */}
+            <div className="bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl p-4 text-center">
+              <Sparkles className="mx-auto text-gray-400 mb-2" size={32} />
+              <p className="text-sm text-gray-600 font-medium">ติดตามโปรโมชั่นเพิ่มเติม</p>
+              <p className="text-xs text-gray-500 mt-1">ที่ป้ายประกาศหน้าร้าน</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Toggle Button for Promo Panel - Show when panel is closed */}
+      {!isPromoPanelOpen && (
+        <button
+          onClick={() => setIsPromoPanelOpen(true)}
+          className="fixed left-0 top-[calc(140px+50%)] -translate-y-1/2 z-40 bg-gradient-to-r from-orange-500 to-red-500 text-white p-3 rounded-r-xl shadow-lg hover:from-orange-600 hover:to-red-600 transition-all"
+          title="แสดงโปรโมชั่น"
+        >
+          <div className="flex flex-col items-center">
+            <PanelLeftOpen size={24} />
+            <span className="mt-1 bg-white text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">
+              {promotions.length}
+            </span>
+          </div>
+        </button>
+      )}
+
       {/* Collapsible Right Panel - Paid Transactions */}
-      <div className={`fixed top-0 right-0 h-full z-50 transition-all duration-300 ease-in-out ${
+      <div className={`fixed top-[140px] right-0 h-[calc(100vh-140px)] z-40 transition-all duration-300 ease-in-out ${
         isPaidPanelOpen ? 'w-80' : 'w-0'
       }`}>
         {/* Panel Content */}
-        <div className={`h-full bg-white shadow-2xl border-l border-gray-200 transition-transform duration-300 ease-in-out ${
+        <div className={`h-full w-80 bg-white shadow-2xl border-l border-gray-200 transition-transform duration-300 ease-in-out ${
           isPaidPanelOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
           {/* Panel Header */}
