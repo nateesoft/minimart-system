@@ -455,6 +455,43 @@ export default function MinimartPOS() {
     }
   };
 
+  // Polling: Auto-refresh stock every 15 seconds
+  useEffect(() => {
+    const POLL_INTERVAL = 15000; // 15 seconds
+
+    const pollStock = async () => {
+      try {
+        const prods = await fetchProducts();
+        // Update products list
+        setProducts((prevProducts) => {
+          const hasChanges = prods.some((newProd) => {
+            const oldProd = prevProducts.find((p) => p.id === newProd.id);
+            return oldProd && oldProd.stock !== newProd.stock;
+          });
+          return hasChanges ? prods : prevProducts;
+        });
+
+        // Also update cart items with new stock values
+        setCart((prevCart) => {
+          return prevCart.map((cartItem) => {
+            const updatedProduct = prods.find((p) => p.id === cartItem.id);
+            if (updatedProduct && updatedProduct.stock !== cartItem.stock) {
+              return { ...cartItem, stock: updatedProduct.stock };
+            }
+            return cartItem;
+          });
+        });
+      } catch (err) {
+        // Silent fail for polling - don't disrupt user
+        console.error('Stock polling failed:', err);
+      }
+    };
+
+    const intervalId = setInterval(pollStock, POLL_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
   // Load transaction history
   const loadHistory = async (page: number = 1) => {
     setHistoryLoading(true);
