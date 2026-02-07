@@ -234,3 +234,14 @@ export async function fetchTransactions(params?: {
     `/transactions?${searchParams.toString()}`
   );
 }
+
+// --- Refund Transaction API ---
+export async function refundTransaction(
+  transactionId: number,
+  reason?: string,
+): Promise<Transaction> {
+  return apiFetch<Transaction>(`/transactions/${transactionId}/refund`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason }),
+  });
+}

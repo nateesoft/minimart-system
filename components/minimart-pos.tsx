@@ -27,7 +27,9 @@ import {
   Percent,
   Gift,
   Clock,
-  Zap
+  Zap,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 import type { Product, CartItem, Category } from '@/types';
@@ -44,6 +46,7 @@ import {
   fetchProductByBarcode,
   createTransaction,
   fetchTransactions,
+  refundTransaction,
   login,
   getAuthToken,
   ApiError,
@@ -59,7 +62,203 @@ interface PaymentSuccessData {
   items: number;
 }
 
+// Toast notification type
+interface ToastNotification {
+  id: number;
+  type: 'success' | 'error' | 'info';
+  title: string;
+  message?: string;
+}
+
+// Toast Notification Component
+function ToastContainer({ toasts, onRemove }: { toasts: ToastNotification[]; onRemove: (id: number) => void }) {
+  if (toasts.length === 0) return null;
+
+  const getToastStyles = (type: ToastNotification['type']) => {
+    switch (type) {
+      case 'success':
+        return {
+          bg: 'bg-gradient-to-r from-emerald-500 to-green-500',
+          icon: <CheckCircle2 className="text-white" size={24} />,
+        };
+      case 'error':
+        return {
+          bg: 'bg-gradient-to-r from-red-500 to-rose-500',
+          icon: <AlertCircle className="text-white" size={24} />,
+        };
+      case 'info':
+        return {
+          bg: 'bg-gradient-to-r from-blue-500 to-indigo-500',
+          icon: <AlertCircle className="text-white" size={24} />,
+        };
+    }
+  };
+
+  return (
+    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-3">
+      {toasts.map((toast) => {
+        const styles = getToastStyles(toast.type);
+        return (
+          <div
+            key={toast.id}
+            className={`${styles.bg} text-white px-5 py-4 rounded-xl shadow-2xl flex items-start gap-3 min-w-[320px] max-w-md animate-[slideInRight_0.3s_ease-out]`}
+          >
+            <div className="flex-shrink-0 mt-0.5">{styles.icon}</div>
+            <div className="flex-1">
+              <p className="font-bold text-sm">{toast.title}</p>
+              {toast.message && <p className="text-xs opacity-90 mt-1">{toast.message}</p>}
+            </div>
+            <button
+              onClick={() => onRemove(toast.id)}
+              className="flex-shrink-0 hover:bg-white hover:bg-opacity-20 p-1 rounded-lg transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 const CART_STORAGE_KEY = 'minimart_cart';
+
+// Refund Modal Component (defined outside to prevent re-creation on every render)
+interface RefundModalProps {
+  transaction: Transaction;
+  reason: string;
+  onReasonChange: (reason: string) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+  isRefunding: boolean;
+}
+
+function RefundModalComponent({
+  transaction,
+  reason,
+  onReasonChange,
+  onClose,
+  onConfirm,
+  isRefunding,
+}: RefundModalProps) {
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleString('th-TH', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <AlertTriangle className="mr-3" size={28} />
+              <div>
+                <h2 className="text-xl font-bold">ยืนยันการคืนเงิน</h2>
+                <p className="text-orange-100 text-sm">Refund Confirmation</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-4">
+          {/* Transaction Info */}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">เลขที่รายการ:</span>
+              <span className="font-bold text-gray-800">#{transaction.id}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">วันที่:</span>
+              <span className="text-gray-800">{formatDateTime(transaction.createdAt)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">จำนวนสินค้า:</span>
+              <span className="text-gray-800">{transaction.items?.length || 0} รายการ</span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-gray-200">
+              <span className="font-semibold text-gray-700">ยอดคืนเงิน:</span>
+              <span className="font-bold text-xl text-orange-600">{formatCurrency(transaction.total)}</span>
+            </div>
+          </div>
+
+          {/* Warning */}
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="text-orange-500 flex-shrink-0 mt-0.5" size={20} />
+              <div>
+                <p className="text-sm text-orange-800 font-medium">คำเตือน</p>
+                <p className="text-xs text-orange-700 mt-1">
+                  การคืนเงินจะทำให้สถานะรายการเปลี่ยนเป็น &quot;คืนเงิน&quot; และสต็อกสินค้าจะถูกคืนกลับ ไม่สามารถยกเลิกได้
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Reason Input */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              เหตุผลการคืนเงิน (ไม่บังคับ)
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => onReasonChange(e.target.value)}
+              placeholder="ระบุเหตุผล เช่น สินค้าชำรุด, ลูกค้าเปลี่ยนใจ..."
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-orange-500 focus:outline-none resize-none"
+              rows={3}
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onClose}
+              disabled={isRefunding}
+              className="flex-1 py-3 px-4 bg-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-300 transition-colors"
+            >
+              ยกเลิก
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isRefunding}
+              className={`flex-1 py-3 px-4 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                isRefunding
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 shadow-lg hover:shadow-xl'
+              }`}
+            >
+              {isRefunding ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  กำลังดำเนินการ...
+                </>
+              ) : (
+                <>
+                  <RotateCcw size={18} />
+                  ยืนยันคืนเงิน
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Helper to load cart from localStorage
 function loadCartFromStorage(): CartItem[] {
@@ -109,6 +308,32 @@ export default function MinimartPOS() {
 
   // Left panel state (promotions) - default collapsed
   const [isPromoPanelOpen, setIsPromoPanelOpen] = useState<boolean>(false);
+
+  // Refund modal state
+  const [showRefundModal, setShowRefundModal] = useState<boolean>(false);
+  const [refundingTransaction, setRefundingTransaction] = useState<Transaction | null>(null);
+  const [refundReason, setRefundReason] = useState<string>('');
+  const [isRefunding, setIsRefunding] = useState<boolean>(false);
+
+  // Toast notifications state
+  const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  const toastIdRef = useRef<number>(0);
+
+  // Show toast notification
+  const showToast = (type: ToastNotification['type'], title: string, message?: string) => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, type, title, message }]);
+
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+      removeToast(id);
+    }, 4000);
+  };
+
+  // Remove toast
+  const removeToast = (id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   // Sample promotions data
   const promotions = [
@@ -248,6 +473,47 @@ export default function MinimartPOS() {
   const openHistory = () => {
     setShowHistory(true);
     loadHistory(1);
+  };
+
+  // Open refund modal
+  const openRefundModal = (transaction: Transaction) => {
+    setRefundingTransaction(transaction);
+    setRefundReason('');
+    setShowRefundModal(true);
+  };
+
+  // Close refund modal
+  const closeRefundModal = () => {
+    setShowRefundModal(false);
+    setRefundingTransaction(null);
+    setRefundReason('');
+  };
+
+  // Handle refund
+  const handleRefund = async () => {
+    if (!refundingTransaction || isRefunding) return;
+
+    setIsRefunding(true);
+    try {
+      await refundTransaction(refundingTransaction.id, refundReason || undefined);
+
+      // Reload data
+      await Promise.all([
+        loadHistory(historyPage),
+        loadRecentPaidTransactions(),
+        reloadProducts(),
+      ]);
+
+      closeRefundModal();
+      showToast('success', 'คืนเงินสำเร็จ', `รายการ #${refundingTransaction.id} ได้รับการคืนเงินเรียบร้อยแล้ว`);
+    } catch (err) {
+      const message = err instanceof ApiError
+        ? err.message
+        : 'เกิดข้อผิดพลาดในการคืนเงิน';
+      showToast('error', 'คืนเงินไม่สำเร็จ', message);
+    } finally {
+      setIsRefunding(false);
+    }
   };
 
   // Auto-focus barcode input with F2
@@ -739,19 +1005,39 @@ export default function MinimartPOS() {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[55vh] overflow-y-auto pr-2">
-                  {transactions.map((tx) => (
-                    <div key={tx.id} className="bg-white rounded-lg shadow-md overflow-hidden font-mono text-sm hover:shadow-lg transition-shadow">
+                  {transactions.map((tx) => {
+                    const isRefunded = tx.status === 'REFUNDED';
+                    const isVoided = tx.status === 'VOIDED';
+                    const isInactive = isRefunded || isVoided;
+
+                    return (
+                    <div
+                      key={tx.id}
+                      className={`bg-white rounded-lg shadow-md overflow-hidden font-mono text-sm transition-shadow relative ${
+                        isInactive ? 'opacity-80' : 'hover:shadow-lg'
+                      }`}
+                    >
                       {/* Receipt Header */}
-                      <div className="bg-gray-800 text-white px-4 py-3 text-center">
-                        <div className="text-lg font-bold">🏪 MINIMART</div>
-                        <div className="text-xs text-gray-300">ใบเสร็จรับเงิน / Receipt</div>
+                      <div className={`px-4 py-3 text-center ${
+                        isRefunded
+                          ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white'
+                          : isVoided
+                          ? 'bg-gradient-to-r from-red-600 to-red-500 text-white'
+                          : 'bg-gray-800 text-white'
+                      }`}>
+                        <div className="text-lg font-bold">
+                          {isRefunded ? '🔄 REFUNDED' : isVoided ? '❌ VOIDED' : '🏪 MINIMART'}
+                        </div>
+                        <div className={`text-xs ${isInactive ? 'opacity-80' : 'text-gray-300'}`}>
+                          {isRefunded ? 'ใบเสร็จคืนเงิน' : isVoided ? 'ใบเสร็จยกเลิก' : 'ใบเสร็จรับเงิน / Receipt'}
+                        </div>
                       </div>
 
                       {/* Receipt Info */}
                       <div className="px-4 py-2 border-b border-dashed border-gray-300 text-xs text-gray-600">
                         <div className="flex justify-between">
                           <span>เลขที่:</span>
-                          <span className="font-semibold text-gray-800">#{tx.id}</span>
+                          <span className={`font-semibold ${isInactive ? 'text-gray-500' : 'text-gray-800'}`}>#{tx.id}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>วันที่:</span>
@@ -768,12 +1054,12 @@ export default function MinimartPOS() {
                         <div className="text-xs text-gray-500 mb-2">รายการสินค้า</div>
                         <div className="space-y-1">
                           {tx.items?.map((item) => (
-                            <div key={item.id} className="flex justify-between text-xs">
+                            <div key={item.id} className={`flex justify-between text-xs ${isInactive ? 'text-gray-400' : ''}`}>
                               <div className="flex-1 truncate pr-2">
-                                <span className="text-gray-800">{item.product?.name || 'สินค้า'}</span>
-                                <span className="text-gray-500 ml-1">x{item.quantity}</span>
+                                <span className={isInactive ? 'line-through' : 'text-gray-800'}>{item.product?.name || 'สินค้า'}</span>
+                                <span className={`ml-1 ${isInactive ? 'line-through' : 'text-gray-500'}`}>x{item.quantity}</span>
                               </div>
-                              <span className="text-gray-800 font-medium whitespace-nowrap">
+                              <span className={`font-medium whitespace-nowrap ${isInactive ? 'line-through text-gray-400' : 'text-gray-800'}`}>
                                 {formatCurrency(item.unitPrice * item.quantity)}
                               </span>
                             </div>
@@ -783,19 +1069,25 @@ export default function MinimartPOS() {
 
                       {/* Totals */}
                       <div className="px-4 py-2 border-b border-dashed border-gray-300 text-xs">
-                        <div className="flex justify-between text-gray-600">
-                          <span>ยอดรวม</span>
-                          <span>{formatCurrency(tx.subtotal)}</span>
+                        <div className={`flex justify-between ${isInactive ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <span className={isInactive ? 'line-through' : ''}>ยอดรวม</span>
+                          <span className={isInactive ? 'line-through' : ''}>{formatCurrency(tx.subtotal)}</span>
                         </div>
                         {tx.discount > 0 && (
-                          <div className="flex justify-between text-green-600">
+                          <div className={`flex justify-between ${isInactive ? 'text-gray-400 line-through' : 'text-green-600'}`}>
                             <span>ส่วนลด</span>
                             <span>-{formatCurrency(tx.discount)}</span>
                           </div>
                         )}
-                        <div className="flex justify-between text-gray-800 font-bold text-base mt-1 pt-1 border-t border-gray-200">
-                          <span>รวมทั้งสิ้น</span>
-                          <span>{formatCurrency(tx.total)}</span>
+                        <div className={`flex justify-between font-bold text-base mt-1 pt-1 border-t border-gray-200 ${
+                          isRefunded
+                            ? 'text-orange-500'
+                            : isVoided
+                            ? 'text-red-500'
+                            : 'text-gray-800'
+                        }`}>
+                          <span>{isRefunded ? 'ยอดคืนเงิน' : isVoided ? 'ยอดยกเลิก' : 'รวมทั้งสิ้น'}</span>
+                          <span className={isInactive ? 'line-through' : ''}>{formatCurrency(tx.total)}</span>
                         </div>
                       </div>
 
@@ -826,8 +1118,22 @@ export default function MinimartPOS() {
                         <div>*** ขอบคุณที่ใช้บริการ ***</div>
                         <div className="text-[10px] mt-1">Thank you for shopping!</div>
                       </div>
+
+                      {/* Refund Button - Only for COMPLETED transactions */}
+                      {tx.status === 'COMPLETED' && (
+                        <div className="px-4 py-2 bg-gray-100 border-t border-gray-200">
+                          <button
+                            onClick={() => openRefundModal(tx)}
+                            className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-colors"
+                          >
+                            <RotateCcw size={16} />
+                            คืนเงิน (Refund)
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
 
                 {/* Pagination */}
@@ -1286,35 +1592,88 @@ export default function MinimartPOS() {
                 const dateStr = txDate.toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
                 const paymentMethod = tx.payment?.method === 'CASH' ? 'เงินสด' : tx.payment?.method === 'CARD' ? 'บัตร' : tx.payment?.method;
                 const itemCount = tx.items?.length || 0;
+                const isRefunded = tx.status === 'REFUNDED';
+                const isVoided = tx.status === 'VOIDED';
+                const isInactive = isRefunded || isVoided;
 
                 return (
-                  <div key={tx.id} className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-200 hover:shadow-md transition-shadow">
+                  <div
+                    key={tx.id}
+                    className={`rounded-xl p-4 border transition-shadow relative ${
+                      isRefunded
+                        ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-300 opacity-75'
+                        : isVoided
+                        ? 'bg-gradient-to-r from-red-50 to-gray-50 border-red-200 opacity-75'
+                        : 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200 hover:shadow-md'
+                    }`}
+                  >
+                    {/* Strikethrough overlay for refunded/voided */}
+                    {isInactive && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className={`w-full h-0.5 ${isRefunded ? 'bg-orange-400' : 'bg-red-400'} opacity-50 rotate-[-5deg]`}></div>
+                      </div>
+                    )}
+
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-800">#{tx.id}</span>
-                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">
-                          สำเร็จ
-                        </span>
+                        <span className={`font-bold ${isInactive ? 'text-gray-500' : 'text-gray-800'}`}>#{tx.id}</span>
+                        {isRefunded ? (
+                          <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full font-medium flex items-center gap-1">
+                            <RotateCcw size={10} />
+                            คืนเงินแล้ว
+                          </span>
+                        ) : isVoided ? (
+                          <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-medium">
+                            ยกเลิก
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">
+                            สำเร็จ
+                          </span>
+                        )}
                       </div>
                       <span className="text-xs text-gray-500">{dateStr} {timeStr}</span>
                     </div>
                     <div className="space-y-1 mb-3">
                       {tx.items?.slice(0, 3).map((item) => (
-                        <div key={item.id} className="flex justify-between text-sm">
-                          <span className="text-gray-600 truncate flex-1 mr-2">
+                        <div key={item.id} className={`flex justify-between text-sm ${isInactive ? 'text-gray-400' : ''}`}>
+                          <span className={`truncate flex-1 mr-2 ${isInactive ? 'line-through' : 'text-gray-600'}`}>
                             {item.product?.name || 'สินค้า'}
                           </span>
-                          <span className="text-gray-800 font-medium">x{item.quantity}</span>
+                          <span className={`font-medium ${isInactive ? 'line-through text-gray-400' : 'text-gray-800'}`}>x{item.quantity}</span>
                         </div>
                       ))}
                       {itemCount > 3 && (
                         <p className="text-xs text-gray-400">+{itemCount - 3} รายการเพิ่มเติม</p>
                       )}
                     </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-emerald-200">
+                    <div className={`flex justify-between items-center pt-2 border-t ${isInactive ? 'border-gray-200' : 'border-emerald-200'}`}>
                       <span className="text-xs text-gray-500">{paymentMethod}</span>
-                      <span className="font-bold text-lg text-emerald-600">{formatCurrency(tx.total)}</span>
+                      <span className={`font-bold text-lg ${
+                        isRefunded
+                          ? 'text-orange-500 line-through'
+                          : isVoided
+                          ? 'text-red-500 line-through'
+                          : 'text-emerald-600'
+                      }`}>{formatCurrency(tx.total)}</span>
                     </div>
+                    {/* Refund Button - Only for COMPLETED */}
+                    {tx.status === 'COMPLETED' && (
+                      <button
+                        onClick={() => openRefundModal(tx)}
+                        className="w-full mt-2 flex items-center justify-center gap-1 py-1.5 px-3 bg-orange-100 hover:bg-orange-200 text-orange-700 text-xs font-semibold rounded-lg transition-colors"
+                      >
+                        <RotateCcw size={12} />
+                        คืนเงิน
+                      </button>
+                    )}
+                    {/* Refunded indicator */}
+                    {isRefunded && (
+                      <div className="w-full mt-2 flex items-center justify-center gap-1 py-1.5 px-3 bg-gray-200 text-gray-500 text-xs font-medium rounded-lg cursor-not-allowed">
+                        <RotateCcw size={12} />
+                        ดำเนินการคืนเงินแล้ว
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -1338,7 +1697,7 @@ export default function MinimartPOS() {
       {!isPaidPanelOpen && (
         <button
           onClick={() => setIsPaidPanelOpen(true)}
-          className="fixed right-0 top-1/2 -translate-y-1/2 z-50 bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-3 rounded-l-xl shadow-lg hover:from-emerald-600 hover:to-teal-600 transition-all"
+          className="fixed right-0 top-[calc(140px+50%)] -translate-y-1/2 z-40 bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-3 rounded-l-xl shadow-lg hover:from-emerald-600 hover:to-teal-600 transition-all"
           title="แสดงรายการที่ชำระแล้ว"
         >
           <div className="flex flex-col items-center">
@@ -1355,6 +1714,19 @@ export default function MinimartPOS() {
       {showCheckout && <CheckoutModal />}
       {showSuccessModal && <SuccessModal />}
       {showHistory && <HistoryModal />}
+      {showRefundModal && refundingTransaction && (
+        <RefundModalComponent
+          transaction={refundingTransaction}
+          reason={refundReason}
+          onReasonChange={setRefundReason}
+          onClose={closeRefundModal}
+          onConfirm={handleRefund}
+          isRefunding={isRefunding}
+        />
+      )}
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
