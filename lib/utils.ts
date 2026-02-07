@@ -114,3 +114,80 @@ export function getStockStatusText(stock: number): string {
   if (stock <= 10) return 'เหลือน้อย';
   return 'พร้อมขาย';
 }
+
+/**
+ * Check if product is within sellable time
+ * Returns true if product CAN be sold now
+ */
+export function isWithinSellableTime(product: Product): boolean {
+  if (!product.timeRestriction) return true;
+
+  const now = new Date();
+  const currentHour = now.getHours();
+  const { startHour, endHour } = product.timeRestriction;
+
+  // Handle cases where end hour is less than start hour (crosses midnight)
+  if (endHour < startHour) {
+    // e.g., startHour=22, endHour=6 means 22:00 to 06:00
+    return currentHour >= startHour || currentHour < endHour;
+  }
+
+  // Normal case: start < end
+  return currentHour >= startHour && currentHour < endHour;
+}
+
+/**
+ * Check if product is time-restricted (cannot be sold now)
+ */
+export function isTimeRestricted(product: Product): boolean {
+  return !isWithinSellableTime(product);
+}
+
+/**
+ * Get time restriction message
+ */
+export function getTimeRestrictionMessage(product: Product): string | null {
+  if (!product.timeRestriction) return null;
+
+  const { startHour, endHour, reason } = product.timeRestriction;
+  if (reason) return reason;
+
+  const formatHour = (h: number) => `${h.toString().padStart(2, '0')}:00`;
+  return `ขายได้เฉพาะ ${formatHour(startHour)} - ${formatHour(endHour)}`;
+}
+
+/**
+ * Check if product has active promotion
+ */
+export function hasActivePromotion(product: Product): boolean {
+  return !!product.promotion;
+}
+
+/**
+ * Get promotion badge color based on type
+ */
+export function getPromotionColor(type: string): string {
+  switch (type) {
+    case 'discount': return 'from-green-500 to-emerald-500';
+    case 'bundle': return 'from-orange-500 to-red-500';
+    case 'flash': return 'from-purple-500 to-pink-500';
+    case 'points': return 'from-blue-500 to-cyan-500';
+    default: return 'from-gray-500 to-gray-600';
+  }
+}
+
+/**
+ * Check if product can be added to cart
+ */
+export function canAddToCart(product: Product): { allowed: boolean; reason?: string } {
+  if (isOutOfStock(product)) {
+    return { allowed: false, reason: 'สินค้าหมด' };
+  }
+
+  if (isTimeRestricted(product)) {
+    const message = getTimeRestrictionMessage(product) || 'ไม่อยู่ในเวลาที่ขายได้';
+    return { allowed: false, reason: message };
+  }
+
+  return { allowed: true };
+}

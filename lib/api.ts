@@ -1,4 +1,11 @@
-import type { Product, Category } from '@/types';
+import type {
+  Product,
+  Category,
+  Promotion,
+  CreatePromotionData,
+  PromotionCalculationResult,
+  CartItem,
+} from '@/types';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3004/api';
@@ -244,4 +251,86 @@ export async function refundTransaction(
     method: 'PATCH',
     body: JSON.stringify({ reason }),
   });
+}
+
+// --- Promotions API ---
+export async function fetchPromotions(params?: {
+  type?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}): Promise<{ data: Promotion[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+  const searchParams = new URLSearchParams();
+  if (params?.type) searchParams.set('type', params.type);
+  if (params?.isActive !== undefined) searchParams.set('isActive', String(params.isActive));
+  searchParams.set('page', String(params?.page || 1));
+  searchParams.set('limit', String(params?.limit || 50));
+
+  return apiFetch<{ data: Promotion[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+    `/promotions?${searchParams.toString()}`
+  );
+}
+
+export async function fetchActivePromotions(): Promise<Promotion[]> {
+  return apiFetch<Promotion[]>('/promotions/active');
+}
+
+export async function fetchPromotion(id: number): Promise<Promotion> {
+  return apiFetch<Promotion>(`/promotions/${id}`);
+}
+
+export async function createPromotion(data: CreatePromotionData): Promise<Promotion> {
+  return apiFetch<Promotion>('/promotions', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updatePromotion(id: number, data: Partial<CreatePromotionData>): Promise<Promotion> {
+  return apiFetch<Promotion>(`/promotions/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deletePromotion(id: number): Promise<void> {
+  await apiFetch<void>(`/promotions/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function togglePromotionActive(id: number): Promise<Promotion> {
+  return apiFetch<Promotion>(`/promotions/${id}/toggle`, {
+    method: 'PATCH',
+  });
+}
+
+export async function calculateCartPromotions(
+  items: { productId: number; quantity: number; unitPrice: number }[]
+): Promise<PromotionCalculationResult> {
+  return apiFetch<PromotionCalculationResult>('/promotions/calculate', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
+}
+
+// --- Products API (Admin) ---
+export interface ApiProductFull {
+  id: number;
+  name: string;
+  price: number;
+  image: string | null;
+  barcode: string;
+  stock: number;
+  unit: string;
+  category: {
+    id: number;
+    slug: string;
+    name: string;
+  };
+}
+
+export async function fetchAllProducts(): Promise<ApiProductFull[]> {
+  const result = await apiFetch<PaginatedResponse<ApiProductFull>>('/products?limit=500');
+  return result.data;
 }

@@ -32,13 +32,18 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
-import type { Product, CartItem, Category } from '@/types';
+import type { Product, CartItem, Category, AppliedPromotion } from '@/types';
 import {
   formatCurrency,
   formatDate,
   playBeepSound,
   isLowStock,
-  isOutOfStock
+  isOutOfStock,
+  isTimeRestricted,
+  getTimeRestrictionMessage,
+  hasActivePromotion,
+  getPromotionColor,
+  canAddToCart
 } from '@/lib/utils';
 import {
   fetchCategories,
@@ -47,6 +52,7 @@ import {
   createTransaction,
   fetchTransactions,
   refundTransaction,
+  calculateCartPromotions,
   login,
   getAuthToken,
   ApiError,
@@ -319,6 +325,10 @@ export default function MinimartPOS() {
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const toastIdRef = useRef<number>(0);
 
+  // Promotion calculation state
+  const [appliedPromotions, setAppliedPromotions] = useState<AppliedPromotion[]>([]);
+  const [promotionDiscount, setPromotionDiscount] = useState<number>(0);
+
   // Show toast notification
   const showToast = (type: ToastNotification['type'], title: string, message?: string) => {
     const id = ++toastIdRef.current;
@@ -528,6 +538,35 @@ export default function MinimartPOS() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
+  // Calculate promotions when cart changes
+  useEffect(() => {
+    const calculatePromotions = async () => {
+      if (cart.length === 0) {
+        setAppliedPromotions([]);
+        setPromotionDiscount(0);
+        return;
+      }
+
+      try {
+        const items = cart.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          unitPrice: item.price,
+        }));
+        const result = await calculateCartPromotions(items);
+        setAppliedPromotions(result.appliedPromotions);
+        setPromotionDiscount(result.totalDiscount);
+      } catch (err) {
+        // Silently fail - promotions are optional
+        console.error('Failed to calculate promotions:', err);
+        setAppliedPromotions([]);
+        setPromotionDiscount(0);
+      }
+    };
+
+    calculatePromotions();
+  }, [cart]);
+
   // Filter products
   const filteredProducts = products.filter(product => {
     const matchCategory = selectedCategory === 'all' || product.category === selectedCategory;
@@ -557,11 +596,18 @@ export default function MinimartPOS() {
 
   // Add to cart
   const addToCart = (product: Product) => {
+    // Check if product can be added (stock & time restrictions)
+    const { allowed, reason } = canAddToCart(product);
+    if (!allowed) {
+      showToast('error', 'ไม่สามารถเพิ่มสินค้าได้', reason);
+      return;
+    }
+
     const existingItem = cart.find(item => item.id === product.id);
-    
+
     if (existingItem) {
       if (existingItem.quantity >= product.stock) {
-        alert(`❌ สินค้าคงเหลือไม่เพียงพอ (คงเหลือ ${product.stock} ${product.unit})`);
+        showToast('error', 'สต็อกไม่เพียงพอ', `คงเหลือ ${product.stock} ${product.unit}`);
         return;
       }
       setCart(cart.map(item =>
@@ -570,10 +616,6 @@ export default function MinimartPOS() {
           : item
       ));
     } else {
-      if (isOutOfStock(product)) {
-        alert('❌ สินค้าหมด!');
-        return;
-      }
       setCart([...cart, { ...product, quantity: 1 }]);
     }
   };
@@ -609,7 +651,7 @@ export default function MinimartPOS() {
 
   // Calculate totals
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const discount = 0;
+  const discount = promotionDiscount;
   const total = subtotal - discount;
   const paymentValue = parseFloat(paymentAmount) || 0;
   const change = paymentValue - total;
@@ -1236,6 +1278,13 @@ export default function MinimartPOS() {
                 >
                   <History size={24} />
                 </button>
+                <Link
+                  href="/admin/promotions"
+                  className="bg-white bg-opacity-20 p-2 rounded-lg backdrop-blur-sm hover:bg-opacity-30 transition-colors flex items-center"
+                  title="จัดการโปรโมชั่น"
+                >
+                  <Gift size={24} />
+                </Link>
                 <div className="text-right">
                   <div className="text-xs text-blue-100">วันที่</div>
                   <div className="text-sm font-semibold">
@@ -1316,42 +1365,94 @@ export default function MinimartPOS() {
 
             {/* Products Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {filteredProducts.map(product => (
-                <div
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className={`bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden group ${
-                    isOutOfStock(product) ? 'opacity-50' : 'hover:scale-105'
-                  }`}
-                >
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 flex items-center justify-center relative">
-                    <span className="text-5xl group-hover:scale-110 transition-transform duration-200">
-                      {product.image}
-                    </span>
-                    {isLowStock(product) && (
-                      <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-bold flex items-center">
-                        <AlertCircle size={12} className="mr-1" />
-                        เหลือน้อย
+              {filteredProducts.map(product => {
+                const restricted = isTimeRestricted(product);
+                const outOfStock = isOutOfStock(product);
+                const lowStock = isLowStock(product);
+                const hasPromo = hasActivePromotion(product);
+                const cannotAdd = outOfStock || restricted;
+
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => addToCart(product)}
+                    className={`bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden group relative ${
+                      cannotAdd ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105'
+                    }`}
+                  >
+                    {/* Promotion Badge - Top Left */}
+                    {hasPromo && product.promotion && (
+                      <div className={`absolute top-0 left-0 z-10 bg-gradient-to-r ${getPromotionColor(product.promotion.type)} text-white text-xs px-2 py-1 rounded-br-lg font-bold flex items-center shadow-lg`}>
+                        {product.promotion.type === 'discount' && <Percent size={12} className="mr-1" />}
+                        {product.promotion.type === 'bundle' && <Gift size={12} className="mr-1" />}
+                        {product.promotion.type === 'flash' && <Zap size={12} className="mr-1" />}
+                        {product.promotion.type === 'points' && <Tag size={12} className="mr-1" />}
+                        {product.promotion.label}
                       </div>
                     )}
-                    {isOutOfStock(product) && (
-                      <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-bold">
-                        หมด
+
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 flex items-center justify-center relative">
+                      <span className={`text-5xl transition-transform duration-200 ${cannotAdd ? '' : 'group-hover:scale-110'}`}>
+                        {product.image}
+                      </span>
+
+                      {/* Status Badges - Top Right */}
+                      <div className="absolute top-2 right-2 flex flex-col gap-1">
+                        {outOfStock && (
+                          <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-bold flex items-center">
+                            <X size={12} className="mr-1" />
+                            สินค้าหมด
+                          </div>
+                        )}
+                        {!outOfStock && lowStock && (
+                          <div className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-bold flex items-center">
+                            <AlertCircle size={12} className="mr-1" />
+                            เหลือน้อย
+                          </div>
+                        )}
+                        {restricted && !outOfStock && (
+                          <div className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full font-bold flex items-center">
+                            <Clock size={12} className="mr-1" />
+                            นอกเวลา
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-bold text-gray-800 text-sm mb-1 truncate">{product.name}</h3>
-                    <p className="text-xs text-gray-500 mb-2">คงเหลือ: {product.stock} {product.unit}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xl font-bold text-blue-600">{formatCurrency(product.price)}</span>
-                      <Plus className={`text-white rounded-full p-1 ${
-                        isOutOfStock(product) ? 'bg-gray-400' : 'bg-blue-500 group-hover:bg-blue-600'
-                      } transition-colors`} size={24} />
+
+                      {/* Out of Stock Overlay */}
+                      {outOfStock && (
+                        <div className="absolute inset-0 bg-gray-900/30 flex items-center justify-center">
+                          <div className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-lg transform -rotate-12 shadow-lg">
+                            SOLD OUT
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Time Restriction Overlay */}
+                      {restricted && !outOfStock && (
+                        <div className="absolute inset-0 bg-purple-900/20 flex items-center justify-center">
+                          <div className="bg-purple-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs text-center transform -rotate-12 shadow-lg max-w-[90%]">
+                            <Clock size={14} className="inline mr-1" />
+                            {getTimeRestrictionMessage(product) || 'ไม่อยู่ในเวลาขาย'}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-3">
+                      <h3 className="font-bold text-gray-800 text-sm mb-1 truncate">{product.name}</h3>
+                      <p className="text-xs text-gray-500 mb-2">คงเหลือ: {product.stock} {product.unit}</p>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-xl font-bold ${hasPromo ? 'text-green-600' : 'text-blue-600'}`}>
+                          {formatCurrency(product.price)}
+                        </span>
+                        <Plus className={`text-white rounded-full p-1 ${
+                          cannotAdd ? 'bg-gray-400' : 'bg-blue-500 group-hover:bg-blue-600'
+                        } transition-colors`} size={24} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {filteredProducts.length === 0 && (
@@ -1429,10 +1530,27 @@ export default function MinimartPOS() {
                         <span>ยอดรวม ({totalItems} ชิ้น)</span>
                         <span className="font-semibold">{formatCurrency(subtotal)}</span>
                       </div>
+
+                      {/* Applied Promotions */}
+                      {appliedPromotions.length > 0 && (
+                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 space-y-2 border border-green-200">
+                          <div className="flex items-center gap-2 text-green-700 text-sm font-semibold">
+                            <Gift size={16} />
+                            <span>โปรโมชั่นที่ได้รับ</span>
+                          </div>
+                          {appliedPromotions.map((promo) => (
+                            <div key={promo.promotionId} className="flex justify-between text-sm">
+                              <span className="text-green-700">{promo.name}</span>
+                              <span className="font-semibold text-green-600">-{formatCurrency(promo.discount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       {discount > 0 && (
-                        <div className="flex justify-between text-green-600">
-                          <span>ส่วนลด</span>
-                          <span className="font-semibold">-{formatCurrency(discount)}</span>
+                        <div className="flex justify-between text-green-600 font-semibold">
+                          <span>ส่วนลดโปรโมชั่น</span>
+                          <span>-{formatCurrency(discount)}</span>
                         </div>
                       )}
                       <div className="flex justify-between text-2xl font-bold text-gray-800 pt-2 border-t-2 border-gray-300">
