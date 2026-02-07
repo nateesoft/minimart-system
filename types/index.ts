@@ -130,3 +130,99 @@ export interface PromotionCalculationResult {
   finalTotal: number;
   appliedPromotions: AppliedPromotion[];
 }
+
+// ============================================
+// Inventory Types - ระบบคลังสินค้า
+// ============================================
+
+export type InventoryTransactionType =
+  | 'RECEIVING'
+  | 'ISSUING'
+  | 'ADJUSTMENT'
+  | 'SALE'
+  | 'REFUND';
+
+export interface InventoryTransaction {
+  id: number;
+  productId: number;
+  type: InventoryTransactionType;
+  quantity: number;
+  previousStock: number;
+  currentStock: number;
+  reference?: string;
+  reason?: string;
+  notes?: string;
+  createdBy?: string;
+  createdAt: string;
+  product: {
+    id: number;
+    name: string;
+    barcode: string;
+    image?: string;
+  };
+}
+
+export interface StockCount {
+  id: number;
+  productId: number;
+  systemQuantity: number;
+  countedQuantity: number;
+  variance: number;
+  isAdjusted: boolean;
+  notes?: string;
+  countedBy?: string;
+  createdAt: string;
+  adjustedAt?: string;
+  product: {
+    id: number;
+    name: string;
+    barcode: string;
+    image?: string;
+    stock?: number;
+  };
+}
+
+export interface StockOverview {
+  totalProducts: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  totalValue: number;
+  totalCostValue: number;
+}
+
+export interface LowStockProduct {
+  id: number;
+  name: string;
+  barcode: string;
+  image?: string;
+  stock: number;
+  minStock: number;
+  unit: string;
+  categoryName?: string;
+}
+
+// Bulk Receiving - รับสินค้าหลายรายการ
+export interface ReceivingItem {
+  productId: number;
+  quantity: number;
+}
+
+export interface CreateReceivingData {
+  items: ReceivingItem[];
+  reference?: string;
+  notes?: string;
+}
+
+export interface CreateIssuingData {
+  productId: number;
+  quantity: number;
+  reason: string;
+  reference?: string;
+  notes?: string;
+}
+
+export interface CreateStockCountData {
+  productId: number;
+  countedQuantity: number;
+  notes?: string;
+}

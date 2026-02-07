@@ -29,7 +29,8 @@ import {
   Clock,
   Zap,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  Package
 } from 'lucide-react';
 import Link from 'next/link';
 import type { Product, CartItem, Category, AppliedPromotion } from '@/types';
@@ -1284,6 +1285,13 @@ export default function MinimartPOS() {
                   title="จัดการโปรโมชั่น"
                 >
                   <Gift size={24} />
+                </Link>
+                <Link
+                  href="/admin/inventory"
+                  className="bg-white bg-opacity-20 p-2 rounded-lg backdrop-blur-sm hover:bg-opacity-30 transition-colors flex items-center"
+                  title="คลังสินค้า"
+                >
+                  <Package size={24} />
                 </Link>
                 <div className="text-right">
                   <div className="text-xs text-blue-100">วันที่</div>

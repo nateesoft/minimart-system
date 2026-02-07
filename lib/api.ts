@@ -5,6 +5,14 @@ import type {
   CreatePromotionData,
   PromotionCalculationResult,
   CartItem,
+  InventoryTransaction,
+  StockCount,
+  StockOverview,
+  LowStockProduct,
+  CreateReceivingData,
+  CreateIssuingData,
+  CreateStockCountData,
+  InventoryTransactionType,
 } from '@/types';
 
 const API_BASE_URL =
@@ -333,4 +341,93 @@ export interface ApiProductFull {
 export async function fetchAllProducts(): Promise<ApiProductFull[]> {
   const result = await apiFetch<PaginatedResponse<ApiProductFull>>('/products?limit=500');
   return result.data;
+}
+
+// ============================================
+// Inventory API - ระบบคลังสินค้า
+// ============================================
+
+// รับสินค้าเข้า (Bulk)
+export async function createReceiving(data: CreateReceivingData): Promise<{
+  message: string;
+  transactions: InventoryTransaction[];
+}> {
+  return apiFetch('/inventory/receiving', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// จ่ายสินค้าออก
+export async function createIssuing(data: CreateIssuingData): Promise<InventoryTransaction> {
+  return apiFetch('/inventory/issuing', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ดูประวัติการเคลื่อนไหว
+export async function fetchInventoryTransactions(params?: {
+  productId?: number;
+  type?: InventoryTransactionType;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ data: InventoryTransaction[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+  const searchParams = new URLSearchParams();
+  if (params?.productId) searchParams.set('productId', String(params.productId));
+  if (params?.type) searchParams.set('type', params.type);
+  if (params?.startDate) searchParams.set('startDate', params.startDate);
+  if (params?.endDate) searchParams.set('endDate', params.endDate);
+  searchParams.set('page', String(params?.page || 1));
+  searchParams.set('limit', String(params?.limit || 20));
+
+  return apiFetch(`/inventory/transactions?${searchParams.toString()}`);
+}
+
+// ดูประวัติของสินค้าเฉพาะ
+export async function fetchProductInventoryHistory(productId: number): Promise<InventoryTransaction[]> {
+  return apiFetch(`/inventory/transactions/product/${productId}`);
+}
+
+// ภาพรวมสต็อก
+export async function fetchStockOverview(): Promise<StockOverview> {
+  return apiFetch('/inventory/stock-overview');
+}
+
+// สินค้าใกล้หมด
+export async function fetchLowStockProducts(): Promise<LowStockProduct[]> {
+  return apiFetch('/inventory/low-stock');
+}
+
+// บันทึกการนับสต็อก
+export async function createStockCount(data: CreateStockCountData): Promise<StockCount> {
+  return apiFetch('/inventory/stock-count', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ดูรายการนับสต็อก
+export async function fetchStockCounts(params?: {
+  productId?: number;
+  isAdjusted?: boolean;
+  page?: number;
+  limit?: number;
+}): Promise<{ data: StockCount[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+  const searchParams = new URLSearchParams();
+  if (params?.productId) searchParams.set('productId', String(params.productId));
+  if (params?.isAdjusted !== undefined) searchParams.set('isAdjusted', String(params.isAdjusted));
+  searchParams.set('page', String(params?.page || 1));
+  searchParams.set('limit', String(params?.limit || 20));
+
+  return apiFetch(`/inventory/stock-counts?${searchParams.toString()}`);
+}
+
+// ปรับปรุงสต็อกจากการนับ
+export async function adjustStockCount(id: number): Promise<StockCount> {
+  return apiFetch(`/inventory/stock-counts/${id}/adjust`, {
+    method: 'PATCH',
+  });
 }
