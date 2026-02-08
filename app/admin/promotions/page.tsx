@@ -1,10 +1,12 @@
-import PromotionManagement from '@/components/promotion-management';
+'use client';
 
-export const metadata = {
-  title: 'จัดการโปรโมชั่น - Minimart Admin',
-  description: 'ระบบจัดการโปรโมชั่นสำหรับ Minimart POS',
-};
+import PromotionManagement from '@/components/promotion-management';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function PromotionsPage() {
-  return <PromotionManagement />;
+  return (
+    <ProtectedRoute requiredPermissions={['promotions.view', 'promotions.manage']}>
+      <PromotionManagement />
+    </ProtectedRoute>
+  );
 }
