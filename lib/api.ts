@@ -17,6 +17,13 @@ import type {
   PointTransaction,
   CreateMemberData,
   UpdateMemberData,
+  User,
+  Role,
+  Permission,
+  AuthUser,
+  LoginResponse,
+  CreateUserData,
+  UpdateUserData,
 } from '@/types';
 
 const API_BASE_URL =
@@ -117,9 +124,9 @@ interface PaginatedResponse<T> {
   meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
-interface LoginResponse {
+interface ApiLoginResponse {
   access_token: string;
-  user: { id: number; username: string; name: string; role: string };
+  user: AuthUser;
 }
 
 // --- Data Mappers ---
@@ -152,12 +159,16 @@ export async function login(
   username: string,
   password: string,
 ): Promise<LoginResponse> {
-  const result = await apiFetch<LoginResponse>('/auth/login', {
+  const result = await apiFetch<ApiLoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   });
   setAuthToken(result.access_token);
   return result;
+}
+
+export async function getCurrentUser(): Promise<AuthUser> {
+  return apiFetch<AuthUser>('/auth/me');
 }
 
 // --- Categories API ---
@@ -513,4 +524,98 @@ export async function adjustMemberPoints(memberId: number, data: {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+// ============================================
+// Users API - ระบบผู้ใช้งาน
+// ============================================
+
+export async function fetchUsers(params?: {
+  search?: string;
+  isActive?: boolean;
+}): Promise<User[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.search) searchParams.set('search', params.search);
+  if (params?.isActive !== undefined)
+    searchParams.set('isActive', String(params.isActive));
+
+  const qs = searchParams.toString();
+  return apiFetch<User[]>(`/users${qs ? `?${qs}` : ''}`);
+}
+
+export async function fetchUser(id: number): Promise<User> {
+  return apiFetch<User>(`/users/${id}`);
+}
+
+export async function createUser(data: CreateUserData): Promise<User> {
+  return apiFetch<User>('/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateUser(
+  id: number,
+  data: UpdateUserData
+): Promise<User> {
+  return apiFetch<User>(`/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteUser(id: number): Promise<void> {
+  await apiFetch<void>(`/users/${id}`, { method: 'DELETE' });
+}
+
+// ============================================
+// Roles API - ระบบบทบาท
+// ============================================
+
+export async function fetchRoles(): Promise<Role[]> {
+  return apiFetch<Role[]>('/roles');
+}
+
+export async function fetchRole(id: number): Promise<Role> {
+  return apiFetch<Role>(`/roles/${id}`);
+}
+
+export async function createRole(data: {
+  name: string;
+  displayName: string;
+  description?: string;
+  permissionIds: number[];
+}): Promise<Role> {
+  return apiFetch<Role>('/roles', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateRole(
+  id: number,
+  data: {
+    displayName?: string;
+    description?: string;
+    permissionIds?: number[];
+  }
+): Promise<Role> {
+  return apiFetch<Role>(`/roles/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+// ============================================
+// Permissions API - ระบบสิทธิ์
+// ============================================
+
+export async function fetchPermissions(): Promise<Permission[]> {
+  return apiFetch<Permission[]>('/permissions');
+}
+
+export async function fetchPermissionsGrouped(): Promise<
+  Record<string, Permission[]>
+> {
+  return apiFetch<Record<string, Permission[]>>('/permissions/grouped');
 }

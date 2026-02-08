@@ -277,3 +277,81 @@ export interface UpdateMemberData {
   email?: string;
   isActive?: boolean;
 }
+
+// ============================================
+// Auth & User Types - ระบบผู้ใช้งาน
+// ============================================
+
+export interface User {
+  id: number;
+  username: string;
+  email?: string;
+  firstName: string;
+  lastName?: string;
+  phone?: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  role: Role;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  displayName: string;
+  description?: string;
+  isActive: boolean;
+  permissions?: RolePermission[];
+  _count?: { users: number };
+}
+
+export interface Permission {
+  id: number;
+  code: string;
+  name: string;
+  module: string;
+  description?: string;
+}
+
+export interface RolePermission {
+  id: number;
+  roleId: number;
+  permissionId: number;
+  permission: Permission;
+}
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  name: string;
+  role: string;
+  roleName: string;
+  permissions: string[];
+}
+
+export interface LoginResponse {
+  access_token: string;
+  user: AuthUser;
+}
+
+export interface CreateUserData {
+  username: string;
+  password: string;
+  email?: string;
+  firstName: string;
+  lastName?: string;
+  phone?: string;
+  roleId: number;
+  isActive?: boolean;
+}
+
+export interface UpdateUserData {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  roleId?: number;
+  isActive?: boolean;
+  password?: string;
+}

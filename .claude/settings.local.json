@@ -29,7 +29,10 @@
       "Bash(npx eslint:*)",
       "Bash(npm run lint:*)",
       "Bash(pkill:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(npx ts-node:*)"
     ],
     "deny": [],
     "ask": []

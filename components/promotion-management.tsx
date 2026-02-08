@@ -27,8 +27,6 @@ import {
   deletePromotion,
   togglePromotionActive,
   fetchAllProducts,
-  login,
-  getAuthToken,
   ApiError,
   type ApiProductFull,
 } from '@/lib/api';
@@ -136,9 +134,6 @@ export default function PromotionManagement() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      if (!getAuthToken()) {
-        await login('admin', 'admin1234');
-      }
       const [promoResult, productList] = await Promise.all([
         fetchPromotions({ limit: 100 }),
         fetchAllProducts(),

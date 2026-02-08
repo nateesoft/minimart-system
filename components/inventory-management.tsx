@@ -38,8 +38,6 @@ import {
   createIssuing,
   createStockCount,
   adjustStockCount,
-  login,
-  getAuthToken,
   ApiError,
   type ApiProductFull,
 } from '@/lib/api';
@@ -145,9 +143,6 @@ export default function InventoryManagement() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      if (!getAuthToken()) {
-        await login('admin', 'admin1234');
-      }
       const [overview, lowStock, txns, counts, productList] = await Promise.all([
         fetchStockOverview(),
         fetchLowStockProducts(),

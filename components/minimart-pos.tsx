@@ -37,6 +37,7 @@ import {
   Star
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Product, CartItem, Category, AppliedPromotion, Member } from '@/types';
 import {
   formatCurrency,
@@ -58,8 +59,6 @@ import {
   fetchTransactions,
   refundTransaction,
   calculateCartPromotions,
-  login,
-  getAuthToken,
   ApiError,
   type Transaction,
   fetchMembers,
@@ -292,6 +291,7 @@ function loadCartFromStorage(): CartItem[] {
 }
 
 export default function MinimartPOS() {
+  const { user, logout } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartLoaded, setIsCartLoaded] = useState<boolean>(false);
@@ -519,15 +519,12 @@ export default function MinimartPOS() {
     }
   }, [cart, isCartLoaded]);
 
-  // Auto-login and load data from API
+  // Load data from API (authentication is handled by AuthContext)
   useEffect(() => {
     async function initializeApp() {
       setIsLoading(true);
       setError(null);
       try {
-        if (!getAuthToken()) {
-          await login('cashier', 'pos1234');
-        }
         const [cats, prods] = await Promise.all([
           fetchCategories(),
           fetchProducts(),
@@ -1515,6 +1512,20 @@ export default function MinimartPOS() {
                   <div className="text-sm font-semibold">
                     {formatDate(new Date())}
                   </div>
+                </div>
+                {/* User Info */}
+                <div className="flex items-center gap-3 ml-4 pl-4 border-l border-white/30">
+                  <div className="text-right">
+                    <div className="text-sm font-semibold">{user?.name}</div>
+                    <div className="text-xs text-blue-100">{user?.roleName}</div>
+                  </div>
+                  <button
+                    onClick={logout}
+                    className="bg-white bg-opacity-20 px-3 py-2 rounded-lg backdrop-blur-sm hover:bg-opacity-30 transition-colors text-sm"
+                    title="ออกจากระบบ"
+                  >
+                    ออกจากระบบ
+                  </button>
                 </div>
               </div>
             </div>
