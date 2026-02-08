@@ -13,6 +13,10 @@ import type {
   CreateIssuingData,
   CreateStockCountData,
   InventoryTransactionType,
+  Member,
+  PointTransaction,
+  CreateMemberData,
+  UpdateMemberData,
 } from '@/types';
 
 const API_BASE_URL =
@@ -199,6 +203,7 @@ interface CreateTransactionPayload {
     amount: number;
   };
   notes?: string;
+  memberId?: number;
 }
 
 export async function createTransaction(payload: CreateTransactionPayload) {
@@ -234,6 +239,15 @@ export interface Transaction {
     method: 'CASH' | 'CARD' | 'QR';
     amount: number;
     change: number;
+  } | null;
+  memberId?: number;
+  pointsEarned?: number;
+  member?: {
+    id: number;
+    phone: string;
+    firstName: string;
+    lastName?: string;
+    totalPoints: number;
   } | null;
 }
 
@@ -429,5 +443,74 @@ export async function fetchStockCounts(params?: {
 export async function adjustStockCount(id: number): Promise<StockCount> {
   return apiFetch(`/inventory/stock-counts/${id}/adjust`, {
     method: 'PATCH',
+  });
+}
+
+// ============================================
+// Members API - ระบบสมาชิก
+// ============================================
+
+// ลงทะเบียนสมาชิกใหม่
+export async function createMember(data: CreateMemberData): Promise<Member> {
+  return apiFetch('/members', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ค้นหาสมาชิก
+export async function fetchMembers(params?: {
+  search?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}): Promise<{ data: Member[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+  const searchParams = new URLSearchParams();
+  if (params?.search) searchParams.set('search', params.search);
+  if (params?.isActive !== undefined) searchParams.set('isActive', String(params.isActive));
+  searchParams.set('page', String(params?.page || 1));
+  searchParams.set('limit', String(params?.limit || 20));
+
+  return apiFetch(`/members?${searchParams.toString()}`);
+}
+
+// ค้นหาสมาชิกด้วย ID
+export async function fetchMemberById(id: number): Promise<Member> {
+  return apiFetch(`/members/${id}`);
+}
+
+// ค้นหาสมาชิกด้วยเบอร์โทร
+export async function fetchMemberByPhone(phone: string): Promise<Member> {
+  return apiFetch(`/members/phone/${phone}`);
+}
+
+// แก้ไขข้อมูลสมาชิก
+export async function updateMember(id: number, data: UpdateMemberData): Promise<Member> {
+  return apiFetch(`/members/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+// ดูประวัติแต้มของสมาชิก
+export async function fetchMemberPoints(memberId: number, params?: {
+  page?: number;
+  limit?: number;
+}): Promise<{ data: PointTransaction[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+  const searchParams = new URLSearchParams();
+  searchParams.set('page', String(params?.page || 1));
+  searchParams.set('limit', String(params?.limit || 20));
+
+  return apiFetch(`/members/${memberId}/points?${searchParams.toString()}`);
+}
+
+// ปรับแต้มสมาชิก (Admin)
+export async function adjustMemberPoints(memberId: number, data: {
+  points: number;
+  description?: string;
+}): Promise<Member> {
+  return apiFetch(`/members/${memberId}/points/adjust`, {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }

@@ -226,3 +226,54 @@ export interface CreateStockCountData {
   countedQuantity: number;
   notes?: string;
 }
+
+// ============================================
+// Member Types - ระบบสมาชิก
+// ============================================
+
+export type PointTransactionType =
+  | 'EARN'
+  | 'REDEEM'
+  | 'BONUS'
+  | 'ADJUSTMENT'
+  | 'EXPIRED';
+
+export interface Member {
+  id: number;
+  phone: string;
+  firstName: string;
+  lastName?: string;
+  email?: string;
+  totalPoints: number;
+  totalSpent: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PointTransaction {
+  id: number;
+  memberId: number;
+  transactionId?: number;
+  type: PointTransactionType;
+  points: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  description?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+export interface CreateMemberData {
+  phone: string;
+  firstName: string;
+  lastName?: string;
+  email?: string;
+}
+
+export interface UpdateMemberData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  isActive?: boolean;
+}

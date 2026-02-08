@@ -30,10 +30,14 @@ import {
   Zap,
   RotateCcw,
   AlertTriangle,
-  Package
+  Package,
+  User,
+  UserPlus,
+  Phone,
+  Star
 } from 'lucide-react';
 import Link from 'next/link';
-import type { Product, CartItem, Category, AppliedPromotion } from '@/types';
+import type { Product, CartItem, Category, AppliedPromotion, Member } from '@/types';
 import {
   formatCurrency,
   formatDate,
@@ -58,6 +62,9 @@ import {
   getAuthToken,
   ApiError,
   type Transaction,
+  fetchMembers,
+  fetchMemberByPhone,
+  createMember,
 } from '@/lib/api';
 
 // Payment success data type
@@ -67,6 +74,9 @@ interface PaymentSuccessData {
   change: number;
   paymentMethod: 'cash' | 'card';
   items: number;
+  memberName?: string;
+  pointsEarned?: number;
+  newTotalPoints?: number;
 }
 
 // Toast notification type
@@ -330,6 +340,17 @@ export default function MinimartPOS() {
   const [appliedPromotions, setAppliedPromotions] = useState<AppliedPromotion[]>([]);
   const [promotionDiscount, setPromotionDiscount] = useState<number>(0);
 
+  // Member state
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [showMemberModal, setShowMemberModal] = useState<boolean>(false);
+  const [showRegisterModal, setShowRegisterModal] = useState<boolean>(false);
+  const [memberSearch, setMemberSearch] = useState<string>('');
+  const [memberSearchResults, setMemberSearchResults] = useState<Member[]>([]);
+  const [isMemberSearching, setIsMemberSearching] = useState<boolean>(false);
+  const [memberRegisterData, setMemberRegisterData] = useState<{ phone: string; firstName: string; lastName: string }>({ phone: '', firstName: '', lastName: '' });
+  const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const [lastPaymentPointsEarned, setLastPaymentPointsEarned] = useState<number>(0);
+
   // Show toast notification
   const showToast = (type: ToastNotification['type'], title: string, message?: string) => {
     const id = ++toastIdRef.current;
@@ -344,6 +365,87 @@ export default function MinimartPOS() {
   // Remove toast
   const removeToast = (id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Points per Baht constant (25 baht = 1 point)
+  const BAHT_PER_POINT = 25;
+
+  // Calculate points that will be earned from current total
+  const calculatePointsEarned = (amount: number) => Math.floor(amount / BAHT_PER_POINT);
+
+  // Search member by phone
+  const handleMemberSearch = async () => {
+    if (!memberSearch.trim()) return;
+
+    setIsMemberSearching(true);
+    try {
+      // Try exact phone match first
+      if (/^0[0-9]{9}$/.test(memberSearch)) {
+        try {
+          const member = await fetchMemberByPhone(memberSearch);
+          setMemberSearchResults([member]);
+          return;
+        } catch {
+          // Not found by phone, try search
+        }
+      }
+
+      // Search by name or partial phone
+      const result = await fetchMembers({ search: memberSearch, limit: 10 });
+      setMemberSearchResults(result.data);
+    } catch (err) {
+      console.error('Member search failed:', err);
+      setMemberSearchResults([]);
+    } finally {
+      setIsMemberSearching(false);
+    }
+  };
+
+  // Select a member
+  const handleSelectMember = (member: Member) => {
+    setSelectedMember(member);
+    setShowMemberModal(false);
+    setMemberSearch('');
+    setMemberSearchResults([]);
+    showToast('success', 'เลือกสมาชิกแล้ว', `${member.firstName} ${member.lastName || ''} - ${member.totalPoints} แต้ม`);
+  };
+
+  // Clear selected member
+  const handleClearMember = () => {
+    setSelectedMember(null);
+  };
+
+  // Register new member
+  const handleRegisterMember = async () => {
+    if (!memberRegisterData.phone || !memberRegisterData.firstName) {
+      showToast('error', 'กรุณากรอกข้อมูล', 'เบอร์โทรและชื่อจำเป็นต้องกรอก');
+      return;
+    }
+
+    if (!/^0[0-9]{9}$/.test(memberRegisterData.phone)) {
+      showToast('error', 'เบอร์โทรไม่ถูกต้อง', 'กรุณากรอกเบอร์โทร 10 หลัก');
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      const newMember = await createMember({
+        phone: memberRegisterData.phone,
+        firstName: memberRegisterData.firstName,
+        lastName: memberRegisterData.lastName || undefined,
+      });
+
+      setSelectedMember(newMember);
+      setShowRegisterModal(false);
+      setShowMemberModal(false);
+      setMemberRegisterData({ phone: '', firstName: '', lastName: '' });
+      showToast('success', 'ลงทะเบียนสำเร็จ', `ยินดีต้อนรับ ${newMember.firstName}!`);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'เกิดข้อผิดพลาด';
+      showToast('error', 'ลงทะเบียนไม่สำเร็จ', message);
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   // Sample promotions data
@@ -707,6 +809,9 @@ export default function MinimartPOS() {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
+    // Calculate points before transaction
+    const pointsToEarn = selectedMember ? calculatePointsEarned(total) : 0;
+
     try {
       // Submit transaction to backend
       await createTransaction({
@@ -719,6 +824,7 @@ export default function MinimartPOS() {
           method: method,
           amount: method === 'cash' ? paymentValue : total,
         },
+        memberId: selectedMember?.id,
       });
 
       // Show success UI
@@ -728,14 +834,19 @@ export default function MinimartPOS() {
         change: method === 'cash' ? change : 0,
         paymentMethod: method,
         items: totalItems,
+        memberName: selectedMember ? `${selectedMember.firstName} ${selectedMember.lastName || ''}`.trim() : undefined,
+        pointsEarned: pointsToEarn,
+        newTotalPoints: selectedMember ? selectedMember.totalPoints + pointsToEarn : undefined,
       };
       setPaymentSuccessData(successData);
+      setLastPaymentPointsEarned(pointsToEarn);
       setShowCheckout(false);
       setShowSuccessModal(true);
 
-      // Clear cart immediately after successful payment
+      // Clear cart and member immediately after successful payment
       setCart([]);
       setPaymentAmount('');
+      setSelectedMember(null);
 
       // Reload products to get updated stock
       await reloadProducts();
@@ -813,6 +924,26 @@ export default function MinimartPOS() {
               </div>
             </div>
           </div>
+
+          {/* Member Info in Checkout */}
+          {selectedMember && (
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <User size={18} className="text-purple-600 mr-2" />
+                  <span className="font-semibold text-purple-800">{selectedMember.firstName} {selectedMember.lastName}</span>
+                </div>
+                <span className="text-sm text-purple-600">{selectedMember.phone}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-purple-200">
+                <span className="text-sm text-purple-700">แต้มปัจจุบัน: <strong>{selectedMember.totalPoints}</strong></span>
+                <div className="flex items-center text-green-600 font-bold">
+                  <Star size={16} className="mr-1 fill-yellow-400 text-yellow-400" />
+                  <span>+{calculatePointsEarned(total)} แต้ม</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -997,6 +1128,30 @@ export default function MinimartPOS() {
               )}
             </div>
 
+            {/* Member Points Earned */}
+            {paymentSuccessData.memberName && paymentSuccessData.pointsEarned !== undefined && (
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-5 border border-purple-200">
+                <div className="flex items-center justify-center text-purple-600 text-sm mb-3">
+                  <Star className="w-4 h-4 mr-2 fill-yellow-400 text-yellow-400" />
+                  สะสมแต้มสมาชิก
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-600 text-sm mb-1">{paymentSuccessData.memberName}</p>
+                  <div className="flex items-center justify-center gap-4 mt-2">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-600">+{paymentSuccessData.pointsEarned}</p>
+                      <p className="text-xs text-gray-500">แต้มที่ได้รับ</p>
+                    </div>
+                    <div className="w-px h-10 bg-purple-200"></div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-purple-600">{paymentSuccessData.newTotalPoints}</p>
+                      <p className="text-xs text-gray-500">แต้มสะสมใหม่</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Close Button */}
             <button
               onClick={closeSuccessModal}
@@ -1127,6 +1282,14 @@ export default function MinimartPOS() {
                           <span>สถานะ:</span>
                           {getStatusBadge(tx.status)}
                         </div>
+                        {tx.member && (
+                          <div className="flex justify-between items-center mt-1 pt-1 border-t border-gray-200">
+                            <span>สมาชิก:</span>
+                            <span className={`font-medium ${isInactive ? 'text-gray-500' : 'text-purple-600'}`}>
+                              {tx.member.firstName} {tx.member.lastName || ''}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Items */}
@@ -1190,6 +1353,23 @@ export default function MinimartPOS() {
                               </div>
                             </>
                           )}
+                        </div>
+                      )}
+
+                      {/* Member Points */}
+                      {tx.member && tx.pointsEarned && tx.pointsEarned > 0 && !isInactive && (
+                        <div className="px-4 py-2 border-b border-dashed border-gray-300 bg-amber-50">
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1 text-amber-700">
+                              <span>🎯</span>
+                              <span>แต้มที่ได้รับ</span>
+                            </div>
+                            <span className="font-bold text-amber-600">+{tx.pointsEarned} แต้ม</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-amber-600 mt-0.5">
+                            <span>สมาชิก: {tx.member.firstName}</span>
+                            <span>แต้มสะสม: {tx.member.totalPoints} แต้ม</span>
+                          </div>
                         </div>
                       )}
 
@@ -1602,6 +1782,59 @@ export default function MinimartPOS() {
                         <span>รวมทั้งสิ้น</span>
                         <span className="text-blue-600">{formatCurrency(total)}</span>
                       </div>
+
+                      {/* Member Points Preview */}
+                      {selectedMember && total > 0 && (
+                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-3 mt-2 border border-purple-200">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-purple-700 flex items-center">
+                              <Star size={14} className="mr-1 fill-yellow-400 text-yellow-400" />
+                              จะได้รับ
+                            </span>
+                            <span className="font-bold text-purple-600">+{calculatePointsEarned(total)} แต้ม</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Member Selection */}
+                    <div className="border-t-2 border-gray-200 pt-4 mb-4">
+                      {selectedMember ? (
+                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-200">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center">
+                              <div className="bg-purple-500 text-white p-2 rounded-full mr-3">
+                                <User size={20} />
+                              </div>
+                              <div>
+                                <p className="font-bold text-gray-800">{selectedMember.firstName} {selectedMember.lastName}</p>
+                                <p className="text-sm text-gray-600">{selectedMember.phone}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={handleClearMember}
+                              className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+                            >
+                              <X size={20} />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between mt-3 pt-3 border-t border-purple-200">
+                            <span className="text-sm text-purple-700 flex items-center">
+                              <Star size={14} className="mr-1 fill-yellow-400 text-yellow-400" />
+                              แต้มสะสม
+                            </span>
+                            <span className="font-bold text-purple-600">{selectedMember.totalPoints} แต้ม</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowMemberModal(true)}
+                          className="w-full bg-gradient-to-r from-purple-100 to-indigo-100 hover:from-purple-200 hover:to-indigo-200 text-purple-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center border-2 border-dashed border-purple-300"
+                        >
+                          <User size={20} className="mr-2" />
+                          เลือกสมาชิก (สะสมแต้ม)
+                        </button>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -1797,6 +2030,20 @@ export default function MinimartPOS() {
                       </div>
                       <span className="text-xs text-gray-500">{dateStr} {timeStr}</span>
                     </div>
+                    {/* Member Info */}
+                    {tx.member && (
+                      <div className={`flex items-center gap-2 mb-2 px-2 py-1.5 rounded-lg ${isInactive ? 'bg-gray-100' : 'bg-emerald-100/50'}`}>
+                        <User size={14} className={isInactive ? 'text-gray-400' : 'text-emerald-600'} />
+                        <span className={`text-sm ${isInactive ? 'text-gray-500' : 'text-emerald-700'}`}>
+                          {tx.member.firstName} {tx.member.lastName || ''}
+                        </span>
+                        {tx.pointsEarned && tx.pointsEarned > 0 && (
+                          <span className={`ml-auto text-xs px-1.5 py-0.5 rounded ${isInactive ? 'bg-gray-200 text-gray-500' : 'bg-amber-100 text-amber-700'}`}>
+                            +{tx.pointsEarned} แต้ม
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="space-y-1 mb-3">
                       {tx.items?.slice(0, 3).map((item) => (
                         <div key={item.id} className={`flex justify-between text-sm ${isInactive ? 'text-gray-400' : ''}`}>
@@ -1886,6 +2133,215 @@ export default function MinimartPOS() {
           onConfirm={handleRefund}
           isRefunding={isRefunding}
         />
+      )}
+
+      {/* Member Search Modal */}
+      {showMemberModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-5">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center">
+                  <User className="mr-2" size={24} />
+                  <div>
+                    <h2 className="text-xl font-bold">ค้นหาสมาชิก</h2>
+                    <p className="text-purple-100 text-sm">ค้นหาด้วยเบอร์โทรหรือชื่อ</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowMemberModal(false);
+                    setMemberSearch('');
+                    setMemberSearchResults([]);
+                  }}
+                  className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Search Input */}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleMemberSearch()}
+                    placeholder="เบอร์โทร หรือ ชื่อ..."
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+                <button
+                  onClick={handleMemberSearch}
+                  disabled={isMemberSearching}
+                  className="bg-purple-600 text-white px-5 rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50"
+                >
+                  {isMemberSearching ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    <Search size={20} />
+                  )}
+                </button>
+              </div>
+
+              {/* Search Results */}
+              <div className="max-h-60 overflow-y-auto space-y-2">
+                {memberSearchResults.length > 0 ? (
+                  memberSearchResults.map((member) => (
+                    <button
+                      key={member.id}
+                      onClick={() => handleSelectMember(member)}
+                      className="w-full bg-gradient-to-r from-gray-50 to-purple-50 hover:from-purple-50 hover:to-indigo-50 rounded-xl p-4 text-left transition-colors border border-gray-200"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-bold text-gray-800">{member.firstName} {member.lastName}</p>
+                          <p className="text-sm text-gray-600 flex items-center mt-1">
+                            <Phone size={14} className="mr-1" />
+                            {member.phone}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-purple-600 flex items-center">
+                            <Star size={16} className="mr-1 fill-yellow-400 text-yellow-400" />
+                            {member.totalPoints} แต้ม
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            ยอดสะสม {formatCurrency(member.totalSpent)}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                ) : memberSearch && !isMemberSearching ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <User size={48} className="mx-auto mb-2 opacity-50" />
+                    <p>ไม่พบสมาชิก</p>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Register New Member Button */}
+              <button
+                onClick={() => {
+                  setShowRegisterModal(true);
+                  setMemberRegisterData({ phone: memberSearch, firstName: '', lastName: '' });
+                }}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all flex items-center justify-center"
+              >
+                <UserPlus size={20} className="mr-2" />
+                ลงทะเบียนสมาชิกใหม่
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Register Member Modal */}
+      {showRegisterModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-5">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center">
+                  <UserPlus className="mr-2" size={24} />
+                  <div>
+                    <h2 className="text-xl font-bold">ลงทะเบียนสมาชิกใหม่</h2>
+                    <p className="text-green-100 text-sm">กรอกข้อมูลสมาชิก</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowRegisterModal(false);
+                    setMemberRegisterData({ phone: '', firstName: '', lastName: '' });
+                  }}
+                  className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  เบอร์โทรศัพท์ <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    type="tel"
+                    value={memberRegisterData.phone}
+                    onChange={(e) => setMemberRegisterData({ ...memberRegisterData, phone: e.target.value })}
+                    placeholder="0812345678"
+                    maxLength={10}
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  ชื่อ <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={memberRegisterData.firstName}
+                  onChange={(e) => setMemberRegisterData({ ...memberRegisterData, firstName: e.target.value })}
+                  placeholder="ชื่อจริง"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  นามสกุล
+                </label>
+                <input
+                  type="text"
+                  value={memberRegisterData.lastName}
+                  onChange={(e) => setMemberRegisterData({ ...memberRegisterData, lastName: e.target.value })}
+                  placeholder="นามสกุล (ไม่จำเป็น)"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowRegisterModal(false);
+                    setMemberRegisterData({ phone: '', firstName: '', lastName: '' });
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={handleRegisterMember}
+                  disabled={isRegistering}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isRegistering ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      กำลังบันทึก...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={20} className="mr-2" />
+                      ลงทะเบียน
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast Notifications */}
