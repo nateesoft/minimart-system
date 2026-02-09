@@ -1,0 +1,248 @@
+{
+  "common": {
+    "save": "บันทึก",
+    "cancel": "ยกเลิก",
+    "delete": "ลบ",
+    "edit": "แก้ไข",
+    "add": "เพิ่ม",
+    "search": "ค้นหา",
+    "loading": "กำลังโหลด...",
+    "error": "เกิดข้อผิดพลาด",
+    "success": "สำเร็จ",
+    "confirm": "ยืนยัน",
+    "close": "ปิด",
+    "back": "กลับ",
+    "next": "ถัดไป",
+    "previous": "ก่อนหน้า",
+    "all": "ทั้งหมด",
+    "noData": "ไม่มีข้อมูล",
+    "actions": "การดำเนินการ",
+    "status": "สถานะ",
+    "active": "ใช้งาน",
+    "inactive": "ไม่ใช้งาน",
+    "required": "จำเป็น"
+  },
+  "app": {
+    "name": "Minimart POS",
+    "tagline": "POS System",
+    "description": "ระบบ Point of Sale สำหรับร้านค้าปลีก ครบฟีเจอร์ ใช้งานง่าย พร้อมระบบสแกนบาร์โค้ด",
+    "version": "v1.0"
+  },
+  "auth": {
+    "login": "เข้าสู่ระบบ",
+    "logout": "ออกจากระบบ",
+    "username": "ชื่อผู้ใช้",
+    "password": "รหัสผ่าน",
+    "usernamePlaceholder": "กรอกชื่อผู้ใช้",
+    "passwordPlaceholder": "กรอกรหัสผ่าน",
+    "loginButton": "เข้าสู่ระบบ",
+    "loggingIn": "กำลังเข้าสู่ระบบ...",
+    "loginPrompt": "เข้าสู่ระบบเพื่อใช้งาน",
+    "invalidCredentials": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"
+  },
+  "sidebar": {
+    "pos": "ขายหน้าร้าน",
+    "inventory": "คลังสินค้า",
+    "promotions": "โปรโมชั่น",
+    "members": "สมาชิก",
+    "reports": "รายงาน",
+    "users": "จัดการผู้ใช้",
+    "roles": "จัดการบทบาท",
+    "settings": "ตั้งค่า"
+  },
+  "home": {
+    "title": "Minimart POS",
+    "subtitle": "ระบบ Point of Sale สำหรับร้านค้าปลีก ครบฟีเจอร์ ใช้งานง่าย พร้อมระบบสแกนบาร์โค้ด",
+    "startButton": "เริ่มต้นใช้งานระบบ POS",
+    "featuresTitle": "ฟีเจอร์หลักของระบบ",
+    "cards": {
+      "pos": {
+        "title": "ขายหน้าร้าน",
+        "description": "ระบบขายที่รวดเร็วและใช้งานง่าย"
+      },
+      "stock": {
+        "title": "จัดการสต็อก",
+        "description": "ตรวจสอบสินค้าคงเหลือแบบเรียลไทม์"
+      },
+      "reports": {
+        "title": "รายงานยอดขาย",
+        "description": "สรุปยอดขายประจำวัน"
+      },
+      "settings": {
+        "title": "ตั้งค่าระบบ",
+        "description": "ปรับแต่งระบบตามความต้องการ"
+      }
+    },
+    "features": {
+      "barcode": "สแกนบาร์โค้ดสินค้า (กด F2)",
+      "search": "ค้นหาสินค้าแบบเรียลไทม์",
+      "cart": "จัดการตะกร้าสินค้า",
+      "change": "คำนวณเงินทอนอัตโนมัติ",
+      "stock": "แสดงสต็อกสินค้าคงเหลือ",
+      "lowStock": "แจ้งเตือนสินค้าใกล้หมด",
+      "payment": "รองรับการชำระเงินหลายรูปแบบ",
+      "ui": "UI สวยงาม ใช้งานง่าย"
+    }
+  },
+  "pos": {
+    "title": "ขายหน้าร้าน",
+    "cart": "ตะกร้าสินค้า",
+    "cartEmpty": "ยังไม่มีสินค้าในตะกร้า",
+    "cartEmptyHint": "สแกนบาร์โค้ดหรือเลือกสินค้าจากรายการ",
+    "total": "ยอดรวม",
+    "subtotal": "ยอดรวมก่อนส่วนลด",
+    "discount": "ส่วนลด",
+    "grandTotal": "ยอดสุทธิ",
+    "pay": "ชำระเงิน",
+    "cancel": "ยกเลิก",
+    "clearCart": "ล้างตะกร้า",
+    "quantity": "จำนวน",
+    "price": "ราคา",
+    "amount": "รวม",
+    "items": "รายการ",
+    "searchPlaceholder": "ค้นหาสินค้า...",
+    "scanBarcode": "สแกนบาร์โค้ด",
+    "barcodePlaceholder": "กรอกบาร์โค้ด",
+    "allCategories": "ทั้งหมด",
+    "product": {
+      "outOfStock": "หมด",
+      "lowStock": "เหลือน้อย",
+      "available": "พร้อมขาย",
+      "stock": "คงเหลือ",
+      "unit": "ชิ้น"
+    },
+    "payment": {
+      "title": "ชำระเงิน",
+      "method": "วิธีชำระเงิน",
+      "cash": "เงินสด",
+      "card": "บัตรเครดิต",
+      "promptpay": "พร้อมเพย์",
+      "received": "รับเงิน",
+      "change": "เงินทอน",
+      "confirm": "ยืนยันการชำระเงิน",
+      "success": "ชำระเงินสำเร็จ",
+      "receipt": "ใบเสร็จ",
+      "printReceipt": "พิมพ์ใบเสร็จ",
+      "newSale": "ขายรายการใหม่"
+    },
+    "member": {
+      "search": "ค้นหาสมาชิก",
+      "phone": "เบอร์โทรศัพท์",
+      "points": "แต้มสะสม",
+      "usePoints": "ใช้แต้ม",
+      "earnPoints": "แต้มที่จะได้รับ"
+    },
+    "timeRestricted": "ไม่อยู่ในเวลาที่ขายได้",
+    "sellableTime": "ขายได้เฉพาะ"
+  },
+  "inventory": {
+    "title": "คลังสินค้า",
+    "receiving": "รับเข้า",
+    "issuing": "จ่ายออก",
+    "stockCount": "นับสต็อก",
+    "history": "ประวัติ",
+    "overview": "ภาพรวม",
+    "totalProducts": "จำนวนสินค้าทั้งหมด",
+    "lowStock": "สินค้าใกล้หมด",
+    "outOfStock": "สินค้าหมด",
+    "totalValue": "มูลค่าสินค้าคงเหลือ",
+    "product": "สินค้า",
+    "currentStock": "สต็อกปัจจุบัน",
+    "minStock": "สต็อกขั้นต่ำ",
+    "quantity": "จำนวน",
+    "reason": "เหตุผล",
+    "note": "หมายเหตุ",
+    "reference": "เลขอ้างอิง",
+    "date": "วันที่",
+    "type": "ประเภท",
+    "supplier": "ผู้จัดจำหน่าย",
+    "types": {
+      "receiving": "รับเข้า",
+      "issuing": "จ่ายออก",
+      "adjustment": "ปรับปรุง",
+      "sale": "ขาย",
+      "refund": "คืนสินค้า"
+    }
+  },
+  "promotions": {
+    "title": "โปรโมชั่น",
+    "name": "ชื่อโปรโมชั่น",
+    "type": "ประเภท",
+    "startDate": "วันเริ่มต้น",
+    "endDate": "วันสิ้นสุด",
+    "products": "สินค้าที่ร่วมรายการ",
+    "discount": "ส่วนลด",
+    "types": {
+      "buyXGetY": "ซื้อ X แถม Y",
+      "quantityDiscount": "ส่วนลดตามจำนวน",
+      "bundleFree": "ซื้อครบแถมฟรี",
+      "nextItemDiscount": "ส่วนลดชิ้นถัดไป"
+    }
+  },
+  "users": {
+    "title": "จัดการผู้ใช้",
+    "name": "ชื่อ",
+    "username": "ชื่อผู้ใช้",
+    "email": "อีเมล",
+    "phone": "เบอร์โทร",
+    "role": "บทบาท",
+    "lastLogin": "เข้าใช้ล่าสุด",
+    "createdAt": "สร้างเมื่อ",
+    "addUser": "เพิ่มผู้ใช้",
+    "editUser": "แก้ไขผู้ใช้"
+  },
+  "roles": {
+    "title": "จัดการบทบาท",
+    "name": "ชื่อบทบาท",
+    "displayName": "ชื่อที่แสดง",
+    "description": "คำอธิบาย",
+    "permissions": "สิทธิ์การใช้งาน"
+  },
+  "settings": {
+    "title": "ตั้งค่าระบบ",
+    "language": "ภาษา",
+    "theme": "ธีม",
+    "dateFormat": "รูปแบบวันที่",
+    "currency": "สกุลเงิน",
+    "languages": {
+      "th": "ภาษาไทย",
+      "en": "English"
+    },
+    "themes": {
+      "light": "สว่าง",
+      "dark": "มืด",
+      "system": "ตามระบบ"
+    },
+    "dateFormats": {
+      "th": "ไทย (25 มกราคม 2567)",
+      "en": "English (January 25, 2024)"
+    },
+    "saved": "บันทึกการตั้งค่าแล้ว"
+  },
+  "reports": {
+    "title": "รายงาน",
+    "salesReport": "รายงานยอดขาย",
+    "daily": "รายวัน",
+    "weekly": "รายสัปดาห์",
+    "monthly": "รายเดือน",
+    "totalSales": "ยอดขายรวม",
+    "transactions": "จำนวนธุรกรรม",
+    "averagePerTransaction": "เฉลี่ยต่อบิล"
+  },
+  "members": {
+    "title": "สมาชิก",
+    "name": "ชื่อ",
+    "phone": "เบอร์โทร",
+    "email": "อีเมล",
+    "points": "แต้มสะสม",
+    "totalSpent": "ยอดซื้อสะสม",
+    "addMember": "เพิ่มสมาชิก"
+  },
+  "errors": {
+    "notFound": "ไม่พบข้อมูล",
+    "unauthorized": "ไม่มีสิทธิ์เข้าถึง",
+    "serverError": "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์",
+    "networkError": "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้",
+    "validationError": "กรุณากรอกข้อมูลให้ถูกต้อง"
+  }
+}

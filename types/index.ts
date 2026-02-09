@@ -1,3 +1,18 @@
+// Time restriction for products (e.g., alcohol can only be sold during certain hours)
+export interface TimeRestriction {
+  startHour: number; // 0-23
+  endHour: number;   // 0-23
+  reason?: string;   // e.g., "ห้ามขายเครื่องดื่มแอลกอฮอล์ 14:00-17:00 และ 00:00-11:00"
+}
+
+// Product promotion info
+export interface ProductPromotion {
+  id: number;
+  type: 'discount' | 'bundle' | 'flash' | 'points';
+  label: string;      // e.g., "-20%", "ซื้อ 2 แถม 1"
+  validUntil?: string;
+}
+
 // Product Types
 export interface Product {
   id: number;
@@ -8,6 +23,10 @@ export interface Product {
   stock: number;
   image: string;
   unit: string;
+  // Optional: Time-based selling restrictions
+  timeRestriction?: TimeRestriction;
+  // Optional: Active promotions
+  promotion?: ProductPromotion;
 }
 
 // Cart Types
@@ -48,4 +67,291 @@ export interface DailySales {
   totalTransactions: number;
   totalRevenue: number;
   totalItems: number;
+}
+
+// Promotion Types
+export type PromotionType = 'BUY_X_GET_Y' | 'QUANTITY_DISCOUNT' | 'BUNDLE_FREE' | 'NEXT_ITEM_DISCOUNT';
+
+export interface PromotionProductInfo {
+  id: number;
+  productId: number;
+  role: 'trigger' | 'free' | 'discounted';
+  product: {
+    id: number;
+    name: string;
+    price: number;
+    image?: string;
+  };
+}
+
+export interface Promotion {
+  id: number;
+  name: string;
+  description?: string;
+  type: PromotionType;
+  isActive: boolean;
+  startDate?: string;
+  endDate?: string;
+  buyQuantity?: number;
+  freeQuantity?: number;
+  discountPercent?: number;
+  discountAmount?: number;
+  products: PromotionProductInfo[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePromotionData {
+  name: string;
+  description?: string;
+  type: PromotionType;
+  isActive?: boolean;
+  startDate?: string;
+  endDate?: string;
+  buyQuantity?: number;
+  freeQuantity?: number;
+  discountPercent?: number;
+  discountAmount?: number;
+  triggerProductIds: number[];
+  freeProductIds?: number[];
+}
+
+export interface AppliedPromotion {
+  promotionId: number;
+  name: string;
+  type: string;
+  discount: number;
+  description: string;
+}
+
+export interface PromotionCalculationResult {
+  originalTotal: number;
+  totalDiscount: number;
+  finalTotal: number;
+  appliedPromotions: AppliedPromotion[];
+}
+
+// ============================================
+// Inventory Types - ระบบคลังสินค้า
+// ============================================
+
+export type InventoryTransactionType =
+  | 'RECEIVING'
+  | 'ISSUING'
+  | 'ADJUSTMENT'
+  | 'SALE'
+  | 'REFUND';
+
+export interface InventoryTransaction {
+  id: number;
+  productId: number;
+  type: InventoryTransactionType;
+  quantity: number;
+  previousStock: number;
+  currentStock: number;
+  reference?: string;
+  reason?: string;
+  notes?: string;
+  createdBy?: string;
+  createdAt: string;
+  product: {
+    id: number;
+    name: string;
+    barcode: string;
+    image?: string;
+  };
+}
+
+export interface StockCount {
+  id: number;
+  productId: number;
+  systemQuantity: number;
+  countedQuantity: number;
+  variance: number;
+  isAdjusted: boolean;
+  notes?: string;
+  countedBy?: string;
+  createdAt: string;
+  adjustedAt?: string;
+  product: {
+    id: number;
+    name: string;
+    barcode: string;
+    image?: string;
+    stock?: number;
+  };
+}
+
+export interface StockOverview {
+  totalProducts: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  totalValue: number;
+  totalCostValue: number;
+}
+
+export interface LowStockProduct {
+  id: number;
+  name: string;
+  barcode: string;
+  image?: string;
+  stock: number;
+  minStock: number;
+  unit: string;
+  categoryName?: string;
+}
+
+// Bulk Receiving - รับสินค้าหลายรายการ
+export interface ReceivingItem {
+  productId: number;
+  quantity: number;
+}
+
+export interface CreateReceivingData {
+  items: ReceivingItem[];
+  reference?: string;
+  notes?: string;
+}
+
+export interface CreateIssuingData {
+  productId: number;
+  quantity: number;
+  reason: string;
+  reference?: string;
+  notes?: string;
+}
+
+export interface CreateStockCountData {
+  productId: number;
+  countedQuantity: number;
+  notes?: string;
+}
+
+// ============================================
+// Member Types - ระบบสมาชิก
+// ============================================
+
+export type PointTransactionType =
+  | 'EARN'
+  | 'REDEEM'
+  | 'BONUS'
+  | 'ADJUSTMENT'
+  | 'EXPIRED';
+
+export interface Member {
+  id: number;
+  phone: string;
+  firstName: string;
+  lastName?: string;
+  email?: string;
+  totalPoints: number;
+  totalSpent: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PointTransaction {
+  id: number;
+  memberId: number;
+  transactionId?: number;
+  type: PointTransactionType;
+  points: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  description?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+export interface CreateMemberData {
+  phone: string;
+  firstName: string;
+  lastName?: string;
+  email?: string;
+}
+
+export interface UpdateMemberData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  isActive?: boolean;
+}
+
+// ============================================
+// Auth & User Types - ระบบผู้ใช้งาน
+// ============================================
+
+export interface User {
+  id: number;
+  username: string;
+  email?: string;
+  firstName: string;
+  lastName?: string;
+  phone?: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  role: Role;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  displayName: string;
+  description?: string;
+  isActive: boolean;
+  permissions?: RolePermission[];
+  _count?: { users: number };
+}
+
+export interface Permission {
+  id: number;
+  code: string;
+  name: string;
+  module: string;
+  description?: string;
+}
+
+export interface RolePermission {
+  id: number;
+  roleId: number;
+  permissionId: number;
+  permission: Permission;
+}
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  name: string;
+  role: string;
+  roleName: string;
+  permissions: string[];
+}
+
+export interface LoginResponse {
+  access_token: string;
+  user: AuthUser;
+}
+
+export interface CreateUserData {
+  username: string;
+  password: string;
+  email?: string;
+  firstName: string;
+  lastName?: string;
+  phone?: string;
+  roleId: number;
+  isActive?: boolean;
+}
+
+export interface UpdateUserData {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  roleId?: number;
+  isActive?: boolean;
+  password?: string;
 }

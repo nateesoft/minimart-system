@@ -23,7 +23,16 @@
       "Bash(npx next build:*)",
       "Bash(pg_isready:*)",
       "Bash(docker ps:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(NODE_ENV=development node:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npm run lint:*)",
+      "Bash(pkill:*)",
+      "Bash(npm run dev:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(npx ts-node:*)"
     ],
     "deny": [],
     "ask": []
