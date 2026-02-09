@@ -1,0 +1,248 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "all": "All",
+    "noData": "No data",
+    "actions": "Actions",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "required": "Required"
+  },
+  "app": {
+    "name": "Minimart POS",
+    "tagline": "POS System",
+    "description": "Point of Sale system for retail stores. Full-featured, easy to use, with barcode scanning support.",
+    "version": "v1.0"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "usernamePlaceholder": "Enter username",
+    "passwordPlaceholder": "Enter password",
+    "loginButton": "Sign In",
+    "loggingIn": "Signing in...",
+    "loginPrompt": "Sign in to continue",
+    "invalidCredentials": "Invalid username or password"
+  },
+  "sidebar": {
+    "pos": "Point of Sale",
+    "inventory": "Inventory",
+    "promotions": "Promotions",
+    "members": "Members",
+    "reports": "Reports",
+    "users": "User Management",
+    "roles": "Role Management",
+    "settings": "Settings"
+  },
+  "home": {
+    "title": "Minimart POS",
+    "subtitle": "Point of Sale system for retail stores. Full-featured, easy to use, with barcode scanning support.",
+    "startButton": "Start Using POS System",
+    "featuresTitle": "Key Features",
+    "cards": {
+      "pos": {
+        "title": "Point of Sale",
+        "description": "Fast and easy-to-use sales system"
+      },
+      "stock": {
+        "title": "Stock Management",
+        "description": "Real-time inventory tracking"
+      },
+      "reports": {
+        "title": "Sales Reports",
+        "description": "Daily sales summary"
+      },
+      "settings": {
+        "title": "System Settings",
+        "description": "Customize as needed"
+      }
+    },
+    "features": {
+      "barcode": "Barcode scanning (Press F2)",
+      "search": "Real-time product search",
+      "cart": "Shopping cart management",
+      "change": "Automatic change calculation",
+      "stock": "Display remaining stock",
+      "lowStock": "Low stock alerts",
+      "payment": "Multiple payment methods",
+      "ui": "Beautiful and easy-to-use UI"
+    }
+  },
+  "pos": {
+    "title": "Point of Sale",
+    "cart": "Shopping Cart",
+    "cartEmpty": "No items in cart",
+    "cartEmptyHint": "Scan barcode or select products from the list",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "grandTotal": "Grand Total",
+    "pay": "Pay",
+    "cancel": "Cancel",
+    "clearCart": "Clear Cart",
+    "quantity": "Quantity",
+    "price": "Price",
+    "amount": "Amount",
+    "items": "Items",
+    "searchPlaceholder": "Search products...",
+    "scanBarcode": "Scan Barcode",
+    "barcodePlaceholder": "Enter barcode",
+    "allCategories": "All",
+    "product": {
+      "outOfStock": "Out of Stock",
+      "lowStock": "Low Stock",
+      "available": "Available",
+      "stock": "In Stock",
+      "unit": "pcs"
+    },
+    "payment": {
+      "title": "Payment",
+      "method": "Payment Method",
+      "cash": "Cash",
+      "card": "Credit Card",
+      "promptpay": "PromptPay",
+      "received": "Amount Received",
+      "change": "Change",
+      "confirm": "Confirm Payment",
+      "success": "Payment Successful",
+      "receipt": "Receipt",
+      "printReceipt": "Print Receipt",
+      "newSale": "New Sale"
+    },
+    "member": {
+      "search": "Search Member",
+      "phone": "Phone Number",
+      "points": "Points",
+      "usePoints": "Use Points",
+      "earnPoints": "Points to Earn"
+    },
+    "timeRestricted": "Not available at this time",
+    "sellableTime": "Available only"
+  },
+  "inventory": {
+    "title": "Inventory",
+    "receiving": "Receiving",
+    "issuing": "Issuing",
+    "stockCount": "Stock Count",
+    "history": "History",
+    "overview": "Overview",
+    "totalProducts": "Total Products",
+    "lowStock": "Low Stock",
+    "outOfStock": "Out of Stock",
+    "totalValue": "Total Inventory Value",
+    "product": "Product",
+    "currentStock": "Current Stock",
+    "minStock": "Min Stock",
+    "quantity": "Quantity",
+    "reason": "Reason",
+    "note": "Note",
+    "reference": "Reference",
+    "date": "Date",
+    "type": "Type",
+    "supplier": "Supplier",
+    "types": {
+      "receiving": "Receiving",
+      "issuing": "Issuing",
+      "adjustment": "Adjustment",
+      "sale": "Sale",
+      "refund": "Refund"
+    }
+  },
+  "promotions": {
+    "title": "Promotions",
+    "name": "Promotion Name",
+    "type": "Type",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "products": "Applicable Products",
+    "discount": "Discount",
+    "types": {
+      "buyXGetY": "Buy X Get Y",
+      "quantityDiscount": "Quantity Discount",
+      "bundleFree": "Bundle Free",
+      "nextItemDiscount": "Next Item Discount"
+    }
+  },
+  "users": {
+    "title": "User Management",
+    "name": "Name",
+    "username": "Username",
+    "email": "Email",
+    "phone": "Phone",
+    "role": "Role",
+    "lastLogin": "Last Login",
+    "createdAt": "Created At",
+    "addUser": "Add User",
+    "editUser": "Edit User"
+  },
+  "roles": {
+    "title": "Role Management",
+    "name": "Role Name",
+    "displayName": "Display Name",
+    "description": "Description",
+    "permissions": "Permissions"
+  },
+  "settings": {
+    "title": "System Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "dateFormat": "Date Format",
+    "currency": "Currency",
+    "languages": {
+      "th": "Thai",
+      "en": "English"
+    },
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "dateFormats": {
+      "th": "Thai (25 January 2567)",
+      "en": "English (January 25, 2024)"
+    },
+    "saved": "Settings saved"
+  },
+  "reports": {
+    "title": "Reports",
+    "salesReport": "Sales Report",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "totalSales": "Total Sales",
+    "transactions": "Transactions",
+    "averagePerTransaction": "Average per Transaction"
+  },
+  "members": {
+    "title": "Members",
+    "name": "Name",
+    "phone": "Phone",
+    "email": "Email",
+    "points": "Points",
+    "totalSpent": "Total Spent",
+    "addMember": "Add Member"
+  },
+  "errors": {
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized access",
+    "serverError": "Server error",
+    "networkError": "Cannot connect to server",
+    "validationError": "Please enter valid information"
+  }
+}

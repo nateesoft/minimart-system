@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Users,
   Plus,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import {
   fetchUsers,
   fetchRoles,
@@ -51,6 +53,8 @@ const initialFormData: UserFormData = {
 };
 
 export default function UserManagement() {
+  const t = useTranslations();
+  const { settings } = useSettings();
   const router = useRouter();
   const { user: currentUser, logout } = useAuth();
   const [users, setUsers] = useState<User[]>([]);

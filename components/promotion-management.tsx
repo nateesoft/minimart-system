@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Plus,
   Edit2,
@@ -19,6 +20,7 @@ import {
   CheckCircle2,
   Home,
 } from 'lucide-react';
+import { useSettings } from '@/contexts/SettingsContext';
 import type { Promotion, PromotionType, CreatePromotionData } from '@/types';
 import {
   fetchPromotions,
@@ -86,6 +88,12 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
 }
 
 export default function PromotionManagement() {
+  const t = useTranslations();
+  const { settings } = useSettings();
+
+  // Helper for formatting with locale
+  const fmt = (amount: number) => formatCurrency(amount, { locale: settings.dateLocale });
+
   // State
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [products, setProducts] = useState<ApiProductFull[]>([]);
@@ -686,7 +694,7 @@ export default function PromotionManagement() {
                       <span className="text-2xl">{product.image || '📦'}</span>
                       <div className="flex-1">
                         <p className="font-medium text-gray-800">{product.name}</p>
-                        <p className="text-xs text-gray-500">{formatCurrency(product.price)}</p>
+                        <p className="text-xs text-gray-500">{fmt(product.price)}</p>
                       </div>
                     </label>
                   ))}
@@ -719,7 +727,7 @@ export default function PromotionManagement() {
                         <span className="text-2xl">{product.image || '📦'}</span>
                         <div className="flex-1">
                           <p className="font-medium text-gray-800">{product.name}</p>
-                          <p className="text-xs text-gray-500">{formatCurrency(product.price)}</p>
+                          <p className="text-xs text-gray-500">{fmt(product.price)}</p>
                         </div>
                       </label>
                     ))}

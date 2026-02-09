@@ -4,7 +4,8 @@
 
 @layer base {
   body {
-    @apply bg-white text-gray-900;
+    @apply bg-gray-50 text-gray-900;
+    @apply dark:bg-gray-900 dark:text-gray-100;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -91,6 +92,15 @@
 
 ::-webkit-scrollbar-thumb {
   @apply bg-gray-300 rounded-full hover:bg-gray-400;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 hover:bg-gray-500;
 }
 
 /* Print styles */

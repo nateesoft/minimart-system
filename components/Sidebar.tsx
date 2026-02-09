@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   ShoppingCart,
@@ -15,62 +16,63 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
+  type LucideIcon,
 } from 'lucide-react';
 import { useState } from 'react';
 
 interface MenuItem {
   path: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  labelKey: string;
+  icon: LucideIcon;
   permissions: string[];
 }
 
 const menuItems: MenuItem[] = [
   {
     path: '/pos',
-    label: 'ขายหน้าร้าน',
+    labelKey: 'sidebar.pos',
     icon: ShoppingCart,
     permissions: ['pos.access'],
   },
   {
     path: '/admin/inventory',
-    label: 'คลังสินค้า',
+    labelKey: 'sidebar.inventory',
     icon: Package,
     permissions: ['inventory.view', 'inventory.manage'],
   },
   {
     path: '/admin/promotions',
-    label: 'โปรโมชั่น',
+    labelKey: 'sidebar.promotions',
     icon: Tag,
     permissions: ['promotions.view', 'promotions.manage'],
   },
   {
     path: '/admin/members',
-    label: 'สมาชิก',
+    labelKey: 'sidebar.members',
     icon: Users,
     permissions: ['members.view', 'members.manage'],
   },
   {
     path: '/admin/reports',
-    label: 'รายงาน',
+    labelKey: 'sidebar.reports',
     icon: BarChart3,
     permissions: ['reports.view'],
   },
   {
     path: '/admin/users',
-    label: 'จัดการผู้ใช้',
+    labelKey: 'sidebar.users',
     icon: UserCog,
     permissions: ['users.view', 'users.manage'],
   },
   {
     path: '/admin/roles',
-    label: 'จัดการบทบาท',
+    labelKey: 'sidebar.roles',
     icon: Shield,
     permissions: ['roles.manage'],
   },
   {
     path: '/admin/settings',
-    label: 'ตั้งค่า',
+    labelKey: 'sidebar.settings',
     icon: Settings,
     permissions: ['settings.manage'],
   },
@@ -82,6 +84,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
+  const t = useTranslations();
   const { user, logout, hasAnyPermission } = useAuth();
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(collapsed);
@@ -110,8 +113,8 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 <ShoppingCart size={24} />
               </div>
               <div>
-                <h1 className="font-bold">Minimart</h1>
-                <p className="text-xs text-gray-400">POS System</p>
+                <h1 className="font-bold">{t('app.name')}</h1>
+                <p className="text-xs text-gray-400">{t('app.tagline')}</p>
               </div>
             </div>
           )}
@@ -149,6 +152,7 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         {visibleMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.path;
+          const label = t(item.labelKey);
 
           return (
             <Link
@@ -159,10 +163,10 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-300 hover:bg-gray-800'
               } ${isCollapsed ? 'justify-center px-2' : ''}`}
-              title={isCollapsed ? item.label : undefined}
+              title={isCollapsed ? label : undefined}
             >
               <Icon size={20} />
-              {!isCollapsed && <span>{item.label}</span>}
+              {!isCollapsed && <span>{label}</span>}
             </Link>
           );
         })}
@@ -175,10 +179,10 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           className={`flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 rounded-xl w-full transition-colors ${
             isCollapsed ? 'justify-center px-2' : ''
           }`}
-          title={isCollapsed ? 'ออกจากระบบ' : undefined}
+          title={isCollapsed ? t('auth.logout') : undefined}
         >
           <LogOut size={20} />
-          {!isCollapsed && <span>ออกจากระบบ</span>}
+          {!isCollapsed && <span>{t('auth.logout')}</span>}
         </button>
       </div>
     </aside>

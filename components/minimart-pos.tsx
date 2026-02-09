@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   ShoppingCart,
   Search,
@@ -38,6 +39,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import type { Product, CartItem, Category, AppliedPromotion, Member } from '@/types';
 import {
   formatCurrency,
@@ -291,6 +293,8 @@ function loadCartFromStorage(): CartItem[] {
 }
 
 export default function MinimartPOS() {
+  const t = useTranslations();
+  const { settings } = useSettings();
   const { user, logout } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -303,9 +307,13 @@ export default function MinimartPOS() {
   const [paymentSuccessData, setPaymentSuccessData] = useState<PaymentSuccessData | null>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
+  // Helper for formatting with locale
+  const fmt = (amount: number) => formatCurrency(amount, { locale: settings.dateLocale });
+  const fmtDate = (date: Date | string) => formatDate(date, { locale: settings.dateLocale });
+
   // API integration state
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([{ id: 'all', name: 'ทั้งหมด', icon: '🏪' }]);
+  const [categories, setCategories] = useState<Category[]>([{ id: 'all', name: t('pos.allCategories'), icon: '🏪' }]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -901,18 +909,18 @@ export default function MinimartPOS() {
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6">
             <div className="text-center mb-4">
               <p className="text-gray-600 text-sm mb-1">ยอดชำระทั้งหมด</p>
-              <p className="text-4xl font-bold text-indigo-600">{formatCurrency(total)}</p>
+              <p className="text-4xl font-bold text-indigo-600">{fmt(total)}</p>
             </div>
             
             <div className="border-t border-gray-300 pt-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">ยอดรวม</span>
-                <span className="font-semibold">{formatCurrency(subtotal)}</span>
+                <span className="font-semibold">{fmt(subtotal)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>ส่วนลด</span>
-                  <span className="font-semibold">-{formatCurrency(discount)}</span>
+                  <span className="font-semibold">-{fmt(discount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
@@ -991,7 +999,7 @@ export default function MinimartPOS() {
                   {change >= 0 ? 'เงินทอน' : 'เงินไม่พอ'}
                 </span>
                 <span className={`text-3xl font-bold ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(Math.abs(change))}
+                  {fmt(Math.abs(change))}
                 </span>
               </div>
             </div>
@@ -1107,19 +1115,19 @@ export default function MinimartPOS() {
 
               <div className="flex justify-between items-center py-2 border-b border-gray-200">
                 <span className="text-gray-600">ยอดชำระ</span>
-                <span className="font-bold text-xl text-gray-800">{formatCurrency(paymentSuccessData.total)}</span>
+                <span className="font-bold text-xl text-gray-800">{fmt(paymentSuccessData.total)}</span>
               </div>
 
               {paymentSuccessData.paymentMethod === 'cash' && (
                 <>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="text-gray-600">รับเงิน</span>
-                    <span className="font-semibold text-gray-800">{formatCurrency(paymentSuccessData.received)}</span>
+                    <span className="font-semibold text-gray-800">{fmt(paymentSuccessData.received)}</span>
                   </div>
 
                   <div className="flex justify-between items-center py-3 bg-green-50 rounded-xl px-4 -mx-1">
                     <span className="font-semibold text-green-700">เงินทอน</span>
-                    <span className="font-bold text-2xl text-green-600">{formatCurrency(paymentSuccessData.change)}</span>
+                    <span className="font-bold text-2xl text-green-600">{fmt(paymentSuccessData.change)}</span>
                   </div>
                 </>
               )}
@@ -1300,7 +1308,7 @@ export default function MinimartPOS() {
                                 <span className={`ml-1 ${isInactive ? 'line-through' : 'text-gray-500'}`}>x{item.quantity}</span>
                               </div>
                               <span className={`font-medium whitespace-nowrap ${isInactive ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-                                {formatCurrency(item.unitPrice * item.quantity)}
+                                {fmt(item.unitPrice * item.quantity)}
                               </span>
                             </div>
                           ))}
@@ -1311,12 +1319,12 @@ export default function MinimartPOS() {
                       <div className="px-4 py-2 border-b border-dashed border-gray-300 text-xs">
                         <div className={`flex justify-between ${isInactive ? 'text-gray-400' : 'text-gray-600'}`}>
                           <span className={isInactive ? 'line-through' : ''}>ยอดรวม</span>
-                          <span className={isInactive ? 'line-through' : ''}>{formatCurrency(tx.subtotal)}</span>
+                          <span className={isInactive ? 'line-through' : ''}>{fmt(tx.subtotal)}</span>
                         </div>
                         {tx.discount > 0 && (
                           <div className={`flex justify-between ${isInactive ? 'text-gray-400 line-through' : 'text-green-600'}`}>
                             <span>ส่วนลด</span>
-                            <span>-{formatCurrency(tx.discount)}</span>
+                            <span>-{fmt(tx.discount)}</span>
                           </div>
                         )}
                         <div className={`flex justify-between font-bold text-base mt-1 pt-1 border-t border-gray-200 ${
@@ -1327,7 +1335,7 @@ export default function MinimartPOS() {
                             : 'text-gray-800'
                         }`}>
                           <span>{isRefunded ? 'ยอดคืนเงิน' : isVoided ? 'ยอดยกเลิก' : 'รวมทั้งสิ้น'}</span>
-                          <span className={isInactive ? 'line-through' : ''}>{formatCurrency(tx.total)}</span>
+                          <span className={isInactive ? 'line-through' : ''}>{fmt(tx.total)}</span>
                         </div>
                       </div>
 
@@ -1342,11 +1350,11 @@ export default function MinimartPOS() {
                             <>
                               <div className="flex justify-between text-gray-600">
                                 <span>รับเงิน</span>
-                                <span>{formatCurrency(tx.payment.amount)}</span>
+                                <span>{fmt(tx.payment.amount)}</span>
                               </div>
                               <div className="flex justify-between text-green-600 font-medium">
                                 <span>เงินทอน</span>
-                                <span>{formatCurrency(tx.payment.change)}</span>
+                                <span>{fmt(tx.payment.change)}</span>
                               </div>
                             </>
                           )}
@@ -1679,7 +1687,7 @@ export default function MinimartPOS() {
                       <p className="text-xs text-gray-500 mb-2">คงเหลือ: {product.stock} {product.unit}</p>
                       <div className="flex justify-between items-center">
                         <span className={`text-xl font-bold ${hasPromo ? 'text-green-600' : 'text-blue-600'}`}>
-                          {formatCurrency(product.price)}
+                          {fmt(product.price)}
                         </span>
                         <Plus className={`text-white rounded-full p-1 ${
                           cannotAdd ? 'bg-gray-400' : 'bg-blue-500 group-hover:bg-blue-600'
@@ -1728,7 +1736,7 @@ export default function MinimartPOS() {
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex-1">
                               <h4 className="font-semibold text-gray-800 text-sm leading-tight">{item.name}</h4>
-                              <p className="text-blue-600 font-bold text-sm">{formatCurrency(item.price)} / {item.unit}</p>
+                              <p className="text-blue-600 font-bold text-sm">{fmt(item.price)} / {item.unit}</p>
                             </div>
                             <button
                               onClick={() => removeFromCart(item.id)}
@@ -1754,7 +1762,7 @@ export default function MinimartPOS() {
                               </button>
                             </div>
                             <span className="font-bold text-lg text-gray-800">
-                              {formatCurrency(item.price * item.quantity)}
+                              {fmt(item.price * item.quantity)}
                             </span>
                           </div>
                         </div>
@@ -1764,7 +1772,7 @@ export default function MinimartPOS() {
                     <div className="border-t-2 border-gray-200 pt-4 space-y-2 mb-4">
                       <div className="flex justify-between text-gray-600">
                         <span>ยอดรวม ({totalItems} ชิ้น)</span>
-                        <span className="font-semibold">{formatCurrency(subtotal)}</span>
+                        <span className="font-semibold">{fmt(subtotal)}</span>
                       </div>
 
                       {/* Applied Promotions */}
@@ -1777,7 +1785,7 @@ export default function MinimartPOS() {
                           {appliedPromotions.map((promo) => (
                             <div key={promo.promotionId} className="flex justify-between text-sm">
                               <span className="text-green-700">{promo.name}</span>
-                              <span className="font-semibold text-green-600">-{formatCurrency(promo.discount)}</span>
+                              <span className="font-semibold text-green-600">-{fmt(promo.discount)}</span>
                             </div>
                           ))}
                         </div>
@@ -1786,12 +1794,12 @@ export default function MinimartPOS() {
                       {discount > 0 && (
                         <div className="flex justify-between text-green-600 font-semibold">
                           <span>ส่วนลดโปรโมชั่น</span>
-                          <span>-{formatCurrency(discount)}</span>
+                          <span>-{fmt(discount)}</span>
                         </div>
                       )}
                       <div className="flex justify-between text-2xl font-bold text-gray-800 pt-2 border-t-2 border-gray-300">
                         <span>รวมทั้งสิ้น</span>
-                        <span className="text-blue-600">{formatCurrency(total)}</span>
+                        <span className="text-blue-600">{fmt(total)}</span>
                       </div>
 
                       {/* Member Points Preview */}
@@ -2076,7 +2084,7 @@ export default function MinimartPOS() {
                           : isVoided
                           ? 'text-red-500 line-through'
                           : 'text-emerald-600'
-                      }`}>{formatCurrency(tx.total)}</span>
+                      }`}>{fmt(tx.total)}</span>
                     </div>
                     {/* Refund Button - Only for COMPLETED */}
                     {tx.status === 'COMPLETED' && (
@@ -2223,7 +2231,7 @@ export default function MinimartPOS() {
                             {member.totalPoints} แต้ม
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
-                            ยอดสะสม {formatCurrency(member.totalSpent)}
+                            ยอดสะสม {fmt(member.totalSpent)}
                           </p>
                         </div>
                       </div>

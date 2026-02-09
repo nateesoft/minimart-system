@@ -1,14 +1,17 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { SettingsProvider } from '@/contexts/SettingsContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { TranslationProvider } from '@/providers/TranslationProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Minimart POS - ระบบขายหน้าร้าน',
-  description: 'ระบบ Point of Sale สำหรับร้านค้าปลีก (Minimart) พร้อมระบบสแกนบาร์โค้ด',
-  keywords: ['POS', 'Point of Sale', 'Minimart', 'ระบบขายหน้าร้าน', 'ร้านค้าปลีก'],
+  title: 'Minimart POS',
+  description: 'Point of Sale System for Retail Stores',
+  keywords: ['POS', 'Point of Sale', 'Minimart', 'Retail'],
 };
 
 export default function RootLayout({
@@ -17,9 +20,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th">
+    <html lang="th" suppressHydrationWarning>
       <body className={inter.className}>
-        <AuthProvider>{children}</AuthProvider>
+        <SettingsProvider>
+          <ThemeProvider>
+            <TranslationProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </TranslationProvider>
+          </ThemeProvider>
+        </SettingsProvider>
       </body>
     </html>
   );

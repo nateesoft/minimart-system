@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Package,
   Plus,
@@ -20,6 +21,7 @@ import {
   ArrowUpFromLine,
   RefreshCw,
 } from 'lucide-react';
+import { useSettings } from '@/contexts/SettingsContext';
 import type {
   InventoryTransaction,
   StockCount,
@@ -93,6 +95,12 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
 }
 
 export default function InventoryManagement() {
+  const t = useTranslations();
+  const { settings } = useSettings();
+
+  // Helper for formatting with locale
+  const fmt = (amount: number) => formatCurrency(amount, { locale: settings.dateLocale });
+
   // State
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isLoading, setIsLoading] = useState(true);
@@ -418,7 +426,7 @@ export default function InventoryManagement() {
                   <div>
                     <p className="text-gray-500 text-sm">มูลค่าสต็อก</p>
                     <p className="text-2xl font-bold text-green-600">
-                      {formatCurrency(stockOverview?.totalValue || 0)}
+                      {fmt(stockOverview?.totalValue || 0)}
                     </p>
                   </div>
                 </div>
